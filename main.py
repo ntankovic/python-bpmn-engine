@@ -1,27 +1,7 @@
 import xml.etree.ElementTree as ET
-from types import SimpleNamespace
+from bpmn_types import *
 from pprint import pprint
-
-
-class BpmnObject(object):
-    def __repr__(self):
-        return f"{type(self).__name__}({self.id})"
-
-
-class SequenceFlow(BpmnObject):
-    pass
-
-
-class Task(BpmnObject):
-    pass
-
-
-class UserTask(Task):
-    pass
-
-
-class ServiceTask(Task):
-    pass
+import time
 
 
 ns = {"bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL"}
@@ -31,18 +11,40 @@ root = tree.getroot()
 
 process = root.find("bpmn:process", ns)
 
-task_mappings = {
-    "task": Task,
-    "userTask": UserTask,
-    "serviceTask": ServiceTask,
-    "sequenceFlow": SequenceFlow,
-}
+pending = []
 
 elements = {}
-for tag, _type in task_mappings.items():
-    for task in process.findall(f"bpmn:{tag}", ns):
+flow = {}
+
+for tag, _type in {
+    **BPMN_TASK_MAPPINGS,
+    **BPMN_FLOW_MAPPINGS,
+    **BPMN_EVENT_MAPPINGS,
+}.items():
+    for e in process.findall(f"bpmn:{tag}", ns):
         t = _type()
-        t.id = task.attrib["id"]
+        t.parse(e)
+
+        if isinstance(t, SequenceFlow):
+            flow[t.source] = t.target
+
         elements[t.id] = t
 
-pprint(elements)
+        if isinstance(t, StartEvent):
+            pending.append(t)
+
+
+def get_by_id(_id):
+    return elements[_id]
+
+
+while len(pending) > 0:
+    time.sleep(1)
+    current = pending.pop()
+    print("DOING:", current)
+    current.run()
+
+    if current.id in flow:
+        pending.append(elements[flow[current.id]])
+
+print(pending)
