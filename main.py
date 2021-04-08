@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from bpmn_types import *
 from pprint import pprint
 import time
@@ -14,19 +15,20 @@ process = root.find("bpmn:process", ns)
 pending = []
 
 elements = {}
-flow = {}
+flow = defaultdict(list)
 
 for tag, _type in {
     **BPMN_TASK_MAPPINGS,
     **BPMN_FLOW_MAPPINGS,
     **BPMN_EVENT_MAPPINGS,
+    **BPMN_GATEWAY_MAPPINGS,
 }.items():
     for e in process.findall(f"bpmn:{tag}", ns):
         t = _type()
         t.parse(e)
 
         if isinstance(t, SequenceFlow):
-            flow[t.source] = t.target
+            flow[t.source].append(t.target)
 
         elements[t.id] = t
 
@@ -34,17 +36,17 @@ for tag, _type in {
             pending.append(t)
 
 
-def get_by_id(_id):
-    return elements[_id]
-
-
 while len(pending) > 0:
     time.sleep(1)
     current = pending.pop()
     print("DOING:", current)
-    current.run()
+    can_continue = current.run()
+    if not can_continue:
+        print("\t- waiting for all processes in gate.")
 
-    if current.id in flow:
-        pending.append(elements[flow[current.id]])
+    if can_continue:
+        if current.id in flow:
+            for next in flow[current.id]:
+                pending.append(elements[next])
 
 print(pending)

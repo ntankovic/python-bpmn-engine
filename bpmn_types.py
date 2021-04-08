@@ -1,12 +1,16 @@
+ns = {"bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL"}
+
+
 class BpmnObject(object):
     def __repr__(self):
-        return f"{type(self).__name__}({self.id})"
+        return f"{type(self).__name__}({self.name or self.id})"
 
     def parse(self, element):
         self.id = element.attrib["id"]
+        self.name = element.attrib["name"] if "name" in element.attrib else None
 
     def run(self):
-        pass
+        return True
 
 
 class SequenceFlow(BpmnObject):
@@ -50,6 +54,17 @@ class EndEvent(Event):
     pass
 
 
+class ExclusiveGateway(BpmnObject):
+    def parse(self, element):
+        self.incoming = len(element.findall("bpmn:incoming", ns))
+        self.outgoing = len(element.findall("bpmn:outgoing", ns))
+        super(ExclusiveGateway, self).parse(element)
+
+    def run(self):
+        self.incoming -= 1
+        return self.incoming == 0
+
+
 BPMN_TASK_MAPPINGS = {
     "task": Task,
     "userTask": UserTask,
@@ -64,3 +79,5 @@ BPMN_EVENT_MAPPINGS = {
     "startEvent": StartEvent,
     "endEvent": EndEvent,
 }
+
+BPMN_GATEWAY_MAPPINGS = {"exclusiveGateway": ExclusiveGateway}
