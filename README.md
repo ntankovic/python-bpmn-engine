@@ -55,7 +55,7 @@ Running process 1
         [1] DOING: Task(UP)
         [1] DOING: ManualTask(Manual Task 2)
         [1] DOING: ServiceTask(Task 3)
-        - checking variables={'a': 1} with ['a==1']... DONE: Result is True
+        [1]     - checking variables={'a': 1} with ['a==1']...  [1] DONE: Result is True
         [1]     - going down default path...
         [1] DOING: Task(Task down)
         [1] DONE
@@ -68,7 +68,7 @@ Running process 2
         [2] DOING: Task(UP)
         [2] DOING: ManualTask(Manual Task 2)
         [2] DOING: ServiceTask(Task 3)
-        - checking variables={'a': 2} with ['a==1']... DONE: Result is False
+        [2]     - checking variables={'a': 2} with ['a==1']...  [2] DONE: Result is False
         [2]     - going down default path...
         [2] DOING: Task(Task down)
         [2] DONE

@@ -34,20 +34,19 @@ class BpmnModel:
                 if isinstance(t, StartEvent):
                     self.pending.append(t)
 
-    @staticmethod
-    def check_conditions(state, conditions):
-        print(f"\t- checking variables={state} with {conditions}... ", end="")
+    def check_conditions(self, state, conditions):
+        self.log(f"\t- checking variables={state} with {conditions}... ", end="")
         ok = False
         try:
             ok = all(eval(c, state, None) for c in conditions)
         except Exception as e:
             pass
-        print("DONE: Result is", ok)
+        self.log("DONE: Result is", ok)
 
     async def run(self, id, variables):
 
         prefix = f"\t[{id}]"
-        log = partial(print, prefix)
+        self.log = log = partial(print, prefix)
 
         pending = deepcopy(self.pending)
         elements = deepcopy(self.elements)
