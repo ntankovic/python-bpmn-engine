@@ -47,14 +47,29 @@ run_serial()
 Example execution trace:
 
 ```python
-DOING: UserTask(Task 1)
-DOING: Task(DOWN)
-	- waiting for all processes in gate.
-DOING: Task(UP)
-DOING: UserTask(Task 2)
-DOING: ServiceTask(Task 3)
-	- checking variables={} with ['a==1']... DONE: Result is False
-	- going down default path...
-DOING: Task(Task down)
-DONE
+Running process 1
+-----------------
+        [1] DOING: UserTask(Task 1)
+        [1] DOING: Task(DOWN)
+        [1]     - waiting for all processes in gate.
+        [1] DOING: Task(UP)
+        [1] DOING: ManualTask(Manual Task 2)
+        [1] DOING: ServiceTask(Task 3)
+        - checking variables={'a': 1} with ['a==1']... DONE: Result is True
+        [1]     - going down default path...
+        [1] DOING: Task(Task down)
+        [1] DONE
+
+Running process 2
+-----------------
+        [2] DOING: UserTask(Task 1)
+        [2] DOING: Task(DOWN)
+        [2]     - waiting for all processes in gate.
+        [2] DOING: Task(UP)
+        [2] DOING: ManualTask(Manual Task 2)
+        [2] DOING: ServiceTask(Task 3)
+        - checking variables={'a': 2} with ['a==1']... DONE: Result is False
+        [2]     - going down default path...
+        [2] DOING: Task(Task down)
+        [2] DONE
 ```
