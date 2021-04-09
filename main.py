@@ -5,12 +5,9 @@ from pprint import pprint
 import time
 
 
-ns = {"bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL"}
-tree = ET.parse("models/model_01.bpmn")
-
-root = tree.getroot()
-
-process = root.find("bpmn:process", NS)
+model_tree = ET.parse("models/model_01.bpmn")
+model_root = model_tree.getroot()
+process = model_root.find("bpmn:process", NS)
 
 pending = []
 elements = {}
@@ -18,7 +15,7 @@ variables = {}
 flow = defaultdict(list)
 
 for tag, _type in BPMN_MAPPINGS.items():
-    for e in process.findall(f"{tag}", ns):
+    for e in process.findall(f"{tag}", NS):
         t = _type()
         t.parse(e)
 
