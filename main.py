@@ -17,13 +17,8 @@ elements = {}
 variables = {}
 flow = defaultdict(list)
 
-for tag, _type in {
-    **BPMN_TASK_MAPPINGS,
-    **BPMN_FLOW_MAPPINGS,
-    **BPMN_EVENT_MAPPINGS,
-    **BPMN_GATEWAY_MAPPINGS,
-}.items():
-    for e in process.findall(f"bpmn:{tag}", ns):
+for tag, _type in BPMN_MAPPINGS.items():
+    for e in process.findall(f"{tag}", ns):
         t = _type()
         t.parse(e)
 
@@ -41,13 +36,13 @@ for tag, _type in {
 
 
 def check_conditions(state, conditions):
-    print(f"Checking variables={state} with {conditions}", end="")
+    print(f"\t- checking variables={state} with {conditions}... ", end="")
     ok = False
     try:
         ok = all(eval(c) for c in conditions)
     except Exception as e:
         pass
-    print("Result=", ok)
+    print("DONE: Result is", ok)
 
 
 while len(pending) > 0:
@@ -81,6 +76,7 @@ while len(pending) > 0:
                     next_tasks.append(elements[sequence.target])
 
             if not next_tasks and default_fallback:
+                print("\t- going down default path...")
                 next_tasks.append(default_fallback)
 
         pending += next_tasks

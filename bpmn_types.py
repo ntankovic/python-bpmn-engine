@@ -3,6 +3,16 @@ NS = {
     "camunda": "http://camunda.org/schema/1.0/bpmn",
 }
 
+BPMN_MAPPINGS = {}
+
+
+def bpmn_tag(tag):
+    def wrap(object):
+        BPMN_MAPPINGS[tag] = object
+        return object
+
+    return wrap
+
 
 class BpmnObject(object):
     def __repr__(self):
@@ -16,6 +26,7 @@ class BpmnObject(object):
         return True
 
 
+@bpmn_tag("bpmn:sequenceFlow")
 class SequenceFlow(BpmnObject):
     def __init__(self):
         self.source = None
@@ -36,31 +47,43 @@ class SequenceFlow(BpmnObject):
     pass
 
 
+@bpmn_tag("bpmn:task")
 class Task(BpmnObject):
     def parse(self, element):
         super(Task, self).parse(element)
 
 
+@bpmn_tag("bpmn:manualTask")
+class ManualTask(Task):
+    pass
+
+
+@bpmn_tag("bpmn:userTask")
 class UserTask(Task):
     pass
 
 
+@bpmn_tag("bpmn:serviceTask")
 class ServiceTask(Task):
     pass
 
 
+@bpmn_tag("bpmn:event")
 class Event(BpmnObject):
     pass
 
 
+@bpmn_tag("bpmn:startEvent")
 class StartEvent(Event):
     pass
 
 
+@bpmn_tag("bpmn:endEvent")
 class EndEvent(Event):
     pass
 
 
+@bpmn_tag("bpmn:gateway")
 class Gateway(BpmnObject):
     def parse(self, element):
         self.incoming = len(element.findall("bpmn:incoming", NS))
@@ -68,12 +91,14 @@ class Gateway(BpmnObject):
         super(Gateway, self).parse(element)
 
 
+@bpmn_tag("bpmn:parallelGateway")
 class ParallelGateway(Gateway):
     def run(self):
         self.incoming -= 1
         return self.incoming == 0
 
 
+@bpmn_tag("bpmn:exclusiveGateway")
 class ExclusiveGateway(Gateway):
     def __init__(self):
         self.default = False
@@ -84,24 +109,3 @@ class ExclusiveGateway(Gateway):
             element.attrib["default"] if "default" in element.attrib else None
         )
         super(ExclusiveGateway, self).parse(element)
-
-
-BPMN_TASK_MAPPINGS = {
-    "task": Task,
-    "userTask": UserTask,
-    "serviceTask": ServiceTask,
-}
-
-BPMN_FLOW_MAPPINGS = {
-    "sequenceFlow": SequenceFlow,
-}
-
-BPMN_EVENT_MAPPINGS = {
-    "startEvent": StartEvent,
-    "endEvent": EndEvent,
-}
-
-BPMN_GATEWAY_MAPPINGS = {
-    "parallelGateway": ParallelGateway,
-    "exclusiveGateway": ExclusiveGateway,
-}
