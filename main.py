@@ -1,8 +1,11 @@
+from asyncio.events import get_event_loop
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from bpmn_types import *
 from pprint import pprint
-import time
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 
 
 model_tree = ET.parse("models/model_01.bpmn")
@@ -36,46 +39,64 @@ def check_conditions(state, conditions):
     print(f"\t- checking variables={state} with {conditions}... ", end="")
     ok = False
     try:
-        ok = all(eval(c) for c in conditions)
+        ok = all(eval(c, state, None) for c in conditions)
     except Exception as e:
         pass
     print("DONE: Result is", ok)
 
 
-while len(pending) > 0:
-    time.sleep(0.1)
-    current = pending.pop()
+async def process(pending, elements, variables, flow):
 
-    if isinstance(current, EndEvent):
-        break
+    pending = deepcopy(pending)
+    elements = deepcopy(elements)
+    variables = deepcopy(variables)
+    flow = deepcopy(flow)
 
-    if isinstance(current, Task):
-        print("DOING:", current)
+    while len(pending) > 0:
+        await asyncio.sleep(0.05)
+        current = pending.pop()
 
-    default = current.default if isinstance(current, ExclusiveGateway) else None
+        if isinstance(current, EndEvent):
+            break
 
-    can_continue = current.run()
-    if not can_continue:
-        print("\t- waiting for all processes in gate.")
+        if isinstance(current, Task):
+            print("\tDOING:", current)
 
-    if can_continue:
-        next_tasks = []
-        if current.id in flow:
-            default_fallback = None
-            for sequence in flow[current.id]:
-                if sequence.id == default:
-                    default_fallback = elements[sequence.target]
-                    continue
-                if sequence.conditions:
-                    if check_conditions(variables, sequence.conditions):
+        default = current.default if isinstance(current, ExclusiveGateway) else None
+
+        can_continue = current.run()
+        if not can_continue:
+            print("\t\t- waiting for all processes in gate.")
+
+        if can_continue:
+            next_tasks = []
+            if current.id in flow:
+                default_fallback = None
+                for sequence in flow[current.id]:
+                    if sequence.id == default:
+                        default_fallback = elements[sequence.target]
+                        continue
+                    if sequence.conditions:
+                        if check_conditions(variables, sequence.conditions):
+                            next_tasks.append(elements[sequence.target])
+                    else:
                         next_tasks.append(elements[sequence.target])
-                else:
-                    next_tasks.append(elements[sequence.target])
 
-            if not next_tasks and default_fallback:
-                print("\t- going down default path...")
-                next_tasks.append(default_fallback)
+                if not next_tasks and default_fallback:
+                    print("\t\t- going down default path...")
+                    next_tasks.append(default_fallback)
 
-        pending += next_tasks
+            pending += next_tasks
 
-print("DONE")
+
+p1 = process(pending, elements, {"a": 1}, flow)
+p2 = process(pending, elements, {"a": 2}, flow)
+
+run = [p1, p2]
+
+for i, p in enumerate(run):
+    print(f"Running process {i+1}\n-----------------")
+    asyncio.run(p)
+    print()
+
+print("DONE!")
