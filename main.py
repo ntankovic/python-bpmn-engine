@@ -24,7 +24,9 @@ async def simulate_user(queues):
 
         # Put 4 user form
         a = random.randint(1, 2)
-        await q.put(f"""option={a}""")
+        default = f"option={a}"
+        data = ask(f"Form input: [{default}]")
+        await q.put(data if data != "" else default)
         await asyncio.sleep(0.5)
 
         await q.put(ask("Form input: "))
