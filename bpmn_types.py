@@ -70,7 +70,10 @@ class UserTask(Task):
 
     def run(self, state, user_input):
         clean_state = {}
-        exec(user_input, None, clean_state)
+        try:
+            exec(user_input, None, clean_state)
+        except Exception as e:
+            pass
         for k, v in clean_state.items():
             if k in self.form_fields:
                 state[k] = v

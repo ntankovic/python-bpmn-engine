@@ -1,6 +1,7 @@
 import asyncio
 from bpmn_model import BpmnModel
 import random
+import sys
 
 
 m = BpmnModel("models/model_01.bpmn")
@@ -14,20 +15,25 @@ def get_workload():
 
 
 async def simulate_user(queues):
+    def ask(text):
+        sys.stdout.write(f"\t[?] {text}")
+        sys.stdout.flush()
+        return sys.stdin.readline().strip()
+
     for q in queues:
 
         # Put 4 user form
         a = random.randint(1, 2)
-        await q.put(f"""name="Mark"\noption={a}""")
+        await q.put(f"""option={a}""")
         await asyncio.sleep(0.5)
 
-        await q.put("")
+        await q.put(ask("Form input: "))
         await asyncio.sleep(0.5)
 
-        await q.put("")
+        await q.put(ask("Form input: "))
         await asyncio.sleep(0.5)
 
-        await q.put("")
+        await q.put(ask("Form input: "))
         await asyncio.sleep(0.5)
 
 
