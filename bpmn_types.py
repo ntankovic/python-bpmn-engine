@@ -60,7 +60,22 @@ class ManualTask(Task):
 
 @bpmn_tag("bpmn:userTask")
 class UserTask(Task):
-    pass
+    def __init__(self):
+        self.form_fields = {}
+
+    def parse(self, element):
+        super(UserTask, self).parse(element)
+        for f in element.findall(".//camunda:formField", NS):
+            self.form_fields[f.attrib["id"]] = f.attrib["type"]
+
+    def run(self, state, user_input):
+        clean_state = {}
+        exec(user_input, None, clean_state)
+        for k, v in clean_state.items():
+            if k in self.form_fields:
+                state[k] = v
+
+        return True
 
 
 @bpmn_tag("bpmn:serviceTask")

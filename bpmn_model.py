@@ -41,9 +41,9 @@ class BpmnModel:
             ok = all(eval(c, state, None) for c in conditions)
         except Exception as e:
             pass
-        self.log("DONE: Result is", ok)
+        print("DONE: Result is", ok)
 
-    async def run(self, id, variables):
+    async def run(self, id, variables, in_queue):
 
         prefix = f"\t[{id}]"
         self.log = log = partial(print, prefix)
@@ -65,7 +65,13 @@ class BpmnModel:
 
             default = current.default if isinstance(current, ExclusiveGateway) else None
 
-            can_continue = current.run()
+            if isinstance(current, UserTask):
+                user_action = await in_queue.get()
+                log("\t- user sent:", user_action)
+                can_continue = current.run(variables, user_action)
+                in_queue.task_done()
+            else:
+                can_continue = current.run()
             if not can_continue:
                 log("\t- waiting for all processes in gate.")
 
