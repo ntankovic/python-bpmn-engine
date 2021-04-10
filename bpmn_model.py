@@ -42,6 +42,7 @@ class BpmnModel:
         except Exception as e:
             pass
         print("DONE: Result is", ok)
+        return ok
 
     async def run(self, id, variables, in_queue):
 
@@ -83,6 +84,7 @@ class BpmnModel:
                         if sequence.id == default:
                             default_fallback = elements[sequence.target]
                             continue
+
                         if sequence.conditions:
                             if self.check_conditions(variables, sequence.conditions):
                                 next_tasks.append(elements[sequence.target])
@@ -95,3 +97,4 @@ class BpmnModel:
 
                 pending += next_tasks
         log("DONE")
+        return variables

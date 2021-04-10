@@ -4,7 +4,7 @@ import random
 
 
 m = BpmnModel("models/model_01.bpmn")
-NUM_INSTANCES = 3
+NUM_INSTANCES = 1
 
 
 def get_workload():
@@ -15,10 +15,20 @@ def get_workload():
 
 async def simulate_user(queues):
     for q in queues:
-        for i in range(3):
-            a = random.randint(1, 2)
-            await q.put(f"a={a}")
-            await asyncio.sleep(0.5)
+
+        # Put 4 user form
+        a = random.randint(1, 2)
+        await q.put(f"""name="Mark"\noption={a}""")
+        await asyncio.sleep(0.5)
+
+        await q.put("")
+        await asyncio.sleep(0.5)
+
+        await q.put("")
+        await asyncio.sleep(0.5)
+
+        await q.put("")
+        await asyncio.sleep(0.5)
 
 
 def run_serial():
@@ -27,7 +37,6 @@ def run_serial():
         for i, (q, p) in enumerate(zip(queues, instances)):
             print(f"Running process {i+1}\n-----------------")
             await asyncio.gather(simulate_user([q]), p)
-            print()
 
     asyncio.run(serial())
 
