@@ -29,7 +29,7 @@ async def simulate_user(queues):
     for q in queues:
         # Put 4 user forms
 
-        q.put_nowait(UserFormMessage("t??", "null")) # Wrong message
+        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
         await asyncio.sleep(WAIT)
 
         a = random.randint(1, 2)
@@ -38,16 +38,25 @@ async def simulate_user(queues):
         q.put_nowait(UserFormMessage("t0", data if data != "" else default))
         await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tup", ask("Form input: ")))
+        q.put_nowait(UserFormMessage("tup", ask("Form input [tup]: ")))
         await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tdown", ask("Form input: ")))
+        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
         await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tup2", ask("Form input: ")))
+        q.put_nowait(UserFormMessage("tdown", ask("Form input [tdown]: ")))
         await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tdown2", ask("Form input: ")))
+        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
+        await asyncio.sleep(WAIT)
+
+        q.put_nowait(UserFormMessage("tup2", ask("Form input [tup2]: ")))
+        await asyncio.sleep(WAIT)
+
+        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
+        await asyncio.sleep(WAIT)
+
+        q.put_nowait(UserFormMessage("tdown2", ask("Form input [tdown2]: ")))
         await asyncio.sleep(WAIT)
 
 
