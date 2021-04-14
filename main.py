@@ -9,7 +9,7 @@ NUM_INSTANCES = 1
 
 
 def get_workload():
-    queues = [asyncio.Queue()] * NUM_INSTANCES
+    queues = [asyncio.Queue() for i in range(NUM_INSTANCES)]
     instances = [m.run(str(i + 1), {}, queues[i]) for i in range(NUM_INSTANCES)]
     return queues, instances
 
@@ -26,9 +26,7 @@ async def simulate_user(queues):
         sys.stdout.flush()
         return sys.stdin.readline().strip()
 
-    for q in queues:
-        # Put 4 user forms
-
+    for i, q in enumerate(queues):
         q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
         await asyncio.sleep(WAIT)
 
@@ -79,6 +77,6 @@ def run_parallel():
     asyncio.run(parallel())
 
 
-# run_parallel()
-run_serial()
+run_parallel()
+# run_serial()
 print("END")

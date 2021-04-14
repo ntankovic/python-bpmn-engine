@@ -40,38 +40,40 @@ class BpmnModel:
                 if isinstance(t, StartEvent):
                     self.pending.append(t)
 
-    def check_conditions(self, state, conditions):
-        self.log(f"\t- checking variables={state} with {conditions}... ")
+    @classmethod
+    def check_conditions(cls, state, conditions, log):
+        log(f"\t- checking variables={state} with {conditions}... ")
         ok = False
         try:
             ok = all(eval(c, state, None) for c in conditions)
         except Exception as e:
             pass
-        self.log("\t  DONE: Result is", ok)
+        log("\t  DONE: Result is", ok)
         return ok
 
-    async def run(self, id, variables, in_queue):
+    async def run(self, _id, variables, in_queue):
 
-        prefix = f"\t[{id}]"
-        self.log = log = partial(print, prefix)
+        prefix = f"\t[{_id}]"
+        log = partial(print, prefix)  # if _id == "2" else lambda *x: x
 
         pending = deepcopy(self.pending)
         elements = deepcopy(self.elements)
         variables = deepcopy(variables)
         flow = deepcopy(self.flow)
-        queue = deque([])
+        queue = deque()
 
         while len(pending) > 0:
 
             # process incoming messages
             if not in_queue.empty():
                 queue.append(in_queue.get_nowait())
+            # print("Check", _id, id(queue), id(in_queue))
 
             exit = False
             can_continue = False
 
-            if len(queue):
-                message = queue.pop()
+            message = queue.pop() if len(queue) else None
+            # log("Message:", message and message.task_id)
 
             for idx, current in enumerate(pending):
                 if isinstance(current, EndEvent):
@@ -114,7 +116,9 @@ class BpmnModel:
                             continue
 
                         if sequence.conditions:
-                            if self.check_conditions(variables, sequence.conditions):
+                            if self.check_conditions(
+                                variables, sequence.conditions, log
+                            ):
                                 next_tasks.append(elements[sequence.target])
                         else:
                             next_tasks.append(elements[sequence.target])
@@ -131,7 +135,7 @@ class BpmnModel:
                     if isinstance(next_task, ParallelGateway):
                         next_task.add_token()
             else:
-                # log("Waiting for user...", pending)
+                log("Waiting for user...", pending)
                 queue.append(await in_queue.get())
 
         log("DONE")
