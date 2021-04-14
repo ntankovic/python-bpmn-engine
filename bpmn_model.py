@@ -87,7 +87,8 @@ class BpmnModel:
                         user_action = message.form_data
 
                         log("DOING:", current)
-                        log("\t- user sent:", user_action)
+                        if user_action:
+                            log("\t- user sent:", user_action)
                         can_continue = current.run(variables, user_action)
                 else:
                     if isinstance(current, Task):
