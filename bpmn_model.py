@@ -41,13 +41,13 @@ class BpmnModel:
                     self.pending.append(t)
 
     def check_conditions(self, state, conditions):
-        self.log(f"\t- checking variables={state} with {conditions}... ", end="")
+        self.log(f"\t- checking variables={state} with {conditions}... ")
         ok = False
         try:
             ok = all(eval(c, state, None) for c in conditions)
         except Exception as e:
             pass
-        print("DONE: Result is", ok)
+        self.log("\t  DONE: Result is", ok)
         return ok
 
     async def run(self, id, variables, in_queue):
@@ -130,7 +130,7 @@ class BpmnModel:
                     if isinstance(next_task, ParallelGateway):
                         next_task.add_token()
             else:
-                log("Waiting for user...", pending)
+                # log("Waiting for user...", pending)
                 queue.append(await in_queue.get())
 
         log("DONE")
