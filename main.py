@@ -1,5 +1,5 @@
 import asyncio
-from bpmn_model import BpmnModel
+from bpmn_model import BpmnModel, UserFormMessage
 import random
 import sys
 
@@ -15,28 +15,40 @@ def get_workload():
 
 
 async def simulate_user(queues):
+    WAIT = 0.01
+
+    def auto(text):
+        return ""
+
     def ask(text):
+        return auto(text)
         sys.stdout.write(f"\t[?] {text}")
         sys.stdout.flush()
         return sys.stdin.readline().strip()
 
     for q in queues:
+        # Put 4 user forms
 
-        # Put 4 user form
+        q.put_nowait(UserFormMessage("t??", "null"))
+        await asyncio.sleep(WAIT)
+
         a = random.randint(1, 2)
         default = f"option={a}"
         data = ask(f"Form input: [{default}]")
-        await q.put(data if data != "" else default)
-        await asyncio.sleep(0.5)
+        q.put_nowait(UserFormMessage("t0", data if data != "" else default))
+        await asyncio.sleep(WAIT)
 
-        await q.put(ask("Form input: "))
-        await asyncio.sleep(0.5)
+        q.put_nowait(UserFormMessage("tup", ask("Form input: ")))
+        await asyncio.sleep(WAIT)
 
-        await q.put(ask("Form input: "))
-        await asyncio.sleep(0.5)
+        q.put_nowait(UserFormMessage("tdown", ask("Form input: ")))
+        await asyncio.sleep(WAIT)
 
-        await q.put(ask("Form input: "))
-        await asyncio.sleep(0.5)
+        q.put_nowait(UserFormMessage("tup2", ask("Form input: ")))
+        await asyncio.sleep(WAIT)
+
+        q.put_nowait(UserFormMessage("tdown2", ask("Form input: ")))
+        await asyncio.sleep(WAIT)
 
 
 def run_serial():
@@ -60,3 +72,4 @@ def run_parallel():
 
 # run_parallel()
 run_serial()
+print("END")

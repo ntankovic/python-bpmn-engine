@@ -111,8 +111,10 @@ class Gateway(BpmnObject):
 
 @bpmn_tag("bpmn:parallelGateway")
 class ParallelGateway(Gateway):
-    def run(self):
+    def add_token(self):
         self.incoming -= 1
+
+    def run(self):
         return self.incoming == 0
 
 

@@ -2,9 +2,15 @@ import xml.etree.ElementTree as ET
 from bpmn_types import *
 from pprint import pprint
 from copy import deepcopy
-from collections import defaultdict
+from collections import defaultdict, deque
 from functools import partial
 import asyncio
+
+
+class UserFormMessage:
+    def __init__(self, task_id, form_data={}):
+        self.task_id = task_id
+        self.form_data = form_data
 
 
 class BpmnModel:
@@ -53,28 +59,55 @@ class BpmnModel:
         elements = deepcopy(self.elements)
         variables = deepcopy(variables)
         flow = deepcopy(self.flow)
+        queue = deque([])
 
         while len(pending) > 0:
-            await asyncio.sleep(0.05)
-            current = pending.pop()
 
-            if isinstance(current, EndEvent):
+            # process incoming messages
+            if not in_queue.empty():
+                queue.append(in_queue.get_nowait())
+
+            exit = False
+            can_continue = False
+            for idx, current in enumerate(pending):
+
+                if isinstance(current, EndEvent):
+                    exit = True
+                    break
+
+                if isinstance(current, UserTask):
+                    if len(queue):
+                        message = queue.pop()
+                        # print("\t\t\t", message.task_id)
+                        if (
+                            isinstance(message, UserFormMessage)
+                            and message.task_id == current.id
+                        ):
+                            user_action = message.form_data
+
+                            log("DOING:", current)
+                            log("\t- user sent:", user_action)
+                            can_continue = current.run(variables, user_action)
+                        else:
+                            queue.append(message)
+                            # print("Discarding", message.task_id)
+
+                    else:
+                        pass
+                        # queue.appendleft(message)
+                else:
+                    if isinstance(current, Task):
+                        log("DOING:", current)
+                    can_continue = current.run()
+
+                if can_continue:
+                    del pending[idx]
+                    break
+
+            if exit:
                 break
 
-            if isinstance(current, Task):
-                log("DOING:", current)
-
             default = current.default if isinstance(current, ExclusiveGateway) else None
-
-            if isinstance(current, UserTask):
-                user_action = await in_queue.get()
-                log("\t- user sent:", user_action)
-                can_continue = current.run(variables, user_action)
-                in_queue.task_done()
-            else:
-                can_continue = current.run()
-            if not can_continue:
-                log("\t- waiting for all processes in gate.")
 
             if can_continue:
                 next_tasks = []
@@ -95,6 +128,16 @@ class BpmnModel:
                         log("\t- going down default path...")
                         next_tasks.append(default_fallback)
 
-                pending += next_tasks
+                for next_task in next_tasks:
+                    if next_task not in pending:
+                        pending.append(next_task)
+                        # log("-----> Adding", next_task)
+                    # log("n", next_task)
+                    if isinstance(next_task, ParallelGateway):
+                        next_task.add_token()
+            else:
+                log("Waiting for user...", pending)
+                queue.append(await in_queue.get())
+
         log("DONE")
         return variables
