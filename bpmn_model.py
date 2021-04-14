@@ -69,32 +69,26 @@ class BpmnModel:
 
             exit = False
             can_continue = False
-            for idx, current in enumerate(pending):
 
+            if len(queue):
+                message = queue.pop()
+
+            for idx, current in enumerate(pending):
                 if isinstance(current, EndEvent):
                     exit = True
                     break
 
                 if isinstance(current, UserTask):
-                    if len(queue):
-                        message = queue.pop()
-                        # print("\t\t\t", message.task_id)
-                        if (
-                            isinstance(message, UserFormMessage)
-                            and message.task_id == current.id
-                        ):
-                            user_action = message.form_data
+                    if (
+                        message
+                        and isinstance(message, UserFormMessage)
+                        and message.task_id == current.id
+                    ):
+                        user_action = message.form_data
 
-                            log("DOING:", current)
-                            log("\t- user sent:", user_action)
-                            can_continue = current.run(variables, user_action)
-                        else:
-                            queue.append(message)
-                            # print("Discarding", message.task_id)
-
-                    else:
-                        pass
-                        # queue.appendleft(message)
+                        log("DOING:", current)
+                        log("\t- user sent:", user_action)
+                        can_continue = current.run(variables, user_action)
                 else:
                     if isinstance(current, Task):
                         log("DOING:", current)
