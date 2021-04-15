@@ -1,4 +1,4 @@
-# A python module for parsing and executing BPMN models in a single process
+# A python module for parsing and executing BPMN models
 
 Supported elements so far:
 
@@ -6,6 +6,10 @@ Supported elements so far:
 -   Task (Manual, User, Service) - dummy execution for now
 -   Gateways (Exclusive, Parallel)
 -   Sequence flow with conditions
+
+Soon:
+-   full fledged REST API
+-   process instance persistence
 
 Example BPMN model:
 ![image](https://user-images.githubusercontent.com/714889/114159824-81c65d80-9926-11eb-8b74-6d5dd9bb82ea.png)
