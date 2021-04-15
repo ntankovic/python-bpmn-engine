@@ -77,6 +77,6 @@ def run_parallel():
     asyncio.run(parallel())
 
 
-run_parallel()
-# run_serial()
+# run_parallel()
+run_serial()
 print("END")

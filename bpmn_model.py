@@ -73,7 +73,8 @@ class BpmnModel:
             can_continue = False
 
             message = queue.pop() if len(queue) else None
-            # log("Message:", message and message.task_id)
+            if message:
+                log("--> msg in:", message and message.task_id)
 
             for idx, current in enumerate(pending):
                 if isinstance(current, EndEvent):
