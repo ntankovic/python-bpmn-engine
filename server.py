@@ -18,7 +18,7 @@ async def handle_form(request):
     task_id = request.match_info.get("id")
     app["bpmn_queue"].put_nowait(UserFormMessage(task_id, post))
 
-    return web.Response(text="OK")
+    return web.json_response({"status": "OK"})
 
 
 app = web.Application()
