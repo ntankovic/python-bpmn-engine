@@ -6,10 +6,10 @@ from bpmn_model import BpmnModel, UserFormMessage
 import random
 import sys
 
-uuid4 = lambda: 1
+uuid4 = lambda: 1  # hardcoded for easy testing
 
 
-m = BpmnModel("models/model_01.bpmn")
+m = BpmnModel("models/model_01.bpmn")  # hardcoded for now
 
 
 async def run_with_server(app):
