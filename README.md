@@ -10,6 +10,8 @@ Supported elements so far:
 Example BPMN model:
 ![image](https://user-images.githubusercontent.com/714889/114159824-81c65d80-9926-11eb-8b74-6d5dd9bb82ea.png)
 
+Usage with an REST API: see `server.py` 
+
 Example usage:
 
 ```python
