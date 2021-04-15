@@ -18,6 +18,7 @@ class BpmnModel:
         self.pending = []
         self.elements = {}
         self.flow = defaultdict(list)
+        self.instances = {}
 
         model_tree = ET.parse(model_path)
         model_root = model_tree.getroot()
@@ -35,34 +36,59 @@ class BpmnModel:
                     if t.default:
                         self.elements[t.default].default = True
 
-                self.elements[t.id] = t
+                self.elements[t._id] = t
 
                 if isinstance(t, StartEvent):
                     self.pending.append(t)
+
+    async def run(self, _id, variables, in_queue):
+        instance = BpmnInstance(_id, model=self, variables=variables, in_queue=in_queue)
+        self.instances[_id] = instance
+        asyncio.create_task(instance.run())
+
+
+class BpmnInstance:
+    def __init__(self, _id, model, variables, in_queue):
+        self._id = _id
+        self.model = model
+        self.variables = deepcopy(variables)
+        self.in_queue = in_queue
+        self.state = "initialized"
+        self.pending = deepcopy(self.model.pending)
+
+    def get_info(self):
+        return {
+            "state": self.state,
+            "variables": self.variables,
+            "id": self._id,
+            "pending": [x._id for x in self.pending],
+        }
 
     @classmethod
     def check_conditions(cls, state, conditions, log):
         log(f"\t- checking variables={state} with {conditions}... ")
         ok = False
         try:
-            ok = all(eval(c, state, None) for c in conditions)
+            ok = all(eval(c, deepcopy(state), None) for c in conditions)
         except Exception as e:
             pass
         log("\t  DONE: Result is", ok)
         return ok
 
-    async def run(self, _id, variables, in_queue):
+    async def run(self):
 
+        self.state = "running"
+        _id = self._id
         prefix = f"\t[{_id}]"
         log = partial(print, prefix)  # if _id == "2" else lambda *x: x
 
-        pending = deepcopy(self.pending)
-        elements = deepcopy(self.elements)
-        variables = deepcopy(variables)
-        flow = deepcopy(self.flow)
+        in_queue = self.in_queue
+        self.pending = deepcopy(self.model.pending)
+        elements = deepcopy(self.model.elements)
+        flow = deepcopy(self.model.flow)
         queue = deque()
 
-        while len(pending) > 0:
+        while len(self.pending) > 0:
 
             # process incoming messages
             if not in_queue.empty():
@@ -76,7 +102,7 @@ class BpmnModel:
             if message:
                 log("--> msg in:", message and message.task_id)
 
-            for idx, current in enumerate(pending):
+            for idx, current in enumerate(self.pending):
                 if isinstance(current, EndEvent):
                     exit = True
                     break
@@ -85,21 +111,21 @@ class BpmnModel:
                     if (
                         message
                         and isinstance(message, UserFormMessage)
-                        and message.task_id == current.id
+                        and message.task_id == current._id
                     ):
                         user_action = message.form_data
 
                         log("DOING:", current)
                         if user_action:
                             log("\t- user sent:", user_action)
-                        can_continue = current.run(variables, user_action)
+                        can_continue = current.run(self.variables, user_action)
                 else:
                     if isinstance(current, Task):
                         log("DOING:", current)
                     can_continue = current.run()
 
                 if can_continue:
-                    del pending[idx]
+                    del self.pending[idx]
                     break
 
             if exit:
@@ -109,16 +135,16 @@ class BpmnModel:
 
             if can_continue:
                 next_tasks = []
-                if current.id in flow:
+                if current._id in flow:
                     default_fallback = None
-                    for sequence in flow[current.id]:
-                        if sequence.id == default:
+                    for sequence in flow[current._id]:
+                        if sequence._id == default:
                             default_fallback = elements[sequence.target]
                             continue
 
                         if sequence.conditions:
                             if self.check_conditions(
-                                variables, sequence.conditions, log
+                                self.variables, sequence.conditions, log
                             ):
                                 next_tasks.append(elements[sequence.target])
                         else:
@@ -129,15 +155,17 @@ class BpmnModel:
                         next_tasks.append(default_fallback)
 
                 for next_task in next_tasks:
-                    if next_task not in pending:
-                        pending.append(next_task)
+                    if next_task not in self.pending:
+                        self.pending.append(next_task)
                         # log("-----> Adding", next_task)
                     # log("n", next_task)
                     if isinstance(next_task, ParallelGateway):
                         next_task.add_token()
             else:
-                log("Waiting for user...", pending)
+                log("Waiting for user...", self.pending)
                 queue.append(await in_queue.get())
 
         log("DONE")
-        return variables
+        self.state = "finished"
+        self.pending = []
+        return self.variables
