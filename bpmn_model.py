@@ -1,3 +1,4 @@
+from asyncio import queues
 import xml.etree.ElementTree as ET
 from bpmn_types import *
 from pprint import pprint
@@ -41,8 +42,9 @@ class BpmnModel:
                 if isinstance(t, StartEvent):
                     self.pending.append(t)
 
-    async def run(self, _id, variables, in_queue):
-        instance = BpmnInstance(_id, model=self, variables=variables, in_queue=in_queue)
+    async def run(self, _id, variables):
+        queue = asyncio.Queue()
+        instance = BpmnInstance(_id, model=self, variables=variables, in_queue=queue)
         self.instances[_id] = instance
         asyncio.create_task(instance.run())
 
