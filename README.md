@@ -57,27 +57,60 @@ Example execution trace:
 ```python
 Running process 1
 -----------------
-        [1] DOING: UserTask(Task 1)
-        [1] DOING: Task(DOWN)
-        [1]     - waiting for all processes in gate.
-        [1] DOING: Task(UP)
+        [1] --> msg in: t_wrong
+        [1] Waiting for user... [UserTask(Which option?)]
+        [1] --> msg in: t0
+        [1] DOING: UserTask(Which option?)
+        [1] Waiting for user... [UserTask(Down), UserTask(Up)]
+        [1] --> msg in: tup
+        [1] DOING: UserTask(Up)
+        [1] Waiting for user... [UserTask(Down), ParallelGateway(ParallelGateway_0vffee4)]
+        [1] --> msg in: t_wrong
+        [1] Waiting for user... [UserTask(Down), ParallelGateway(ParallelGateway_0vffee4)]
+        [1] --> msg in: tdown
+        [1] DOING: UserTask(Down)
         [1] DOING: ManualTask(Manual Task 2)
         [1] DOING: ServiceTask(Task 3)
-        [1]     - checking variables={'a': 1} with ['a==1']...  [1] DONE: Result is True
+        [1]     - checking variables={} with ['option==1']...
+        [1]       DONE: Result is False
         [1]     - going down default path...
-        [1] DOING: Task(Task down)
+        [1] Waiting for user... [UserTask(Task down)]
+        [1] --> msg in: t_wrong
+        [1] Waiting for user... [UserTask(Task down)]
+        [1] --> msg in: tup2
+        [1] Waiting for user... [UserTask(Task down)]
+        [1] --> msg in: t_wrong
+        [1] Waiting for user... [UserTask(Task down)]
+        [1] --> msg in: tdown2
+        [1] DOING: UserTask(Task down)
         [1] DONE
-
 Running process 2
 -----------------
-        [2] DOING: UserTask(Task 1)
-        [2] DOING: Task(DOWN)
-        [2]     - waiting for all processes in gate.
-        [2] DOING: Task(UP)
+        [2] --> msg in: t_wrong
+        [2] Waiting for user... [UserTask(Which option?)]
+        [2] --> msg in: t0
+        [2] DOING: UserTask(Which option?)
+        [2] Waiting for user... [UserTask(Down), UserTask(Up)]
+        [2] --> msg in: tup
+        [2] DOING: UserTask(Up)
+        [2] Waiting for user... [UserTask(Down), ParallelGateway(ParallelGateway_0vffee4)]
+        [2] --> msg in: t_wrong
+        [2] Waiting for user... [UserTask(Down), ParallelGateway(ParallelGateway_0vffee4)]
+        [2] --> msg in: tdown
+        [2] DOING: UserTask(Down)
         [2] DOING: ManualTask(Manual Task 2)
         [2] DOING: ServiceTask(Task 3)
-        [2]     - checking variables={'a': 2} with ['a==1']...  [2] DONE: Result is False
+        [2]     - checking variables={} with ['option==1']...
+        [2]       DONE: Result is False
         [2]     - going down default path...
-        [2] DOING: Task(Task down)
+        [2] Waiting for user... [UserTask(Task down)]
+        [2] --> msg in: t_wrong
+        [2] Waiting for user... [UserTask(Task down)]
+        [2] --> msg in: tup2
+        [2] Waiting for user... [UserTask(Task down)]
+        [2] --> msg in: t_wrong
+        [2] Waiting for user... [UserTask(Task down)]
+        [2] --> msg in: tdown2
+        [2] DOING: UserTask(Task down)
         [2] DONE
 ```
