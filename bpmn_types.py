@@ -8,6 +8,7 @@ BPMN_MAPPINGS = {}
 
 def bpmn_tag(tag):
     def wrap(object):
+        object.tag = tag
         BPMN_MAPPINGS[tag] = object
         return object
 
@@ -52,6 +53,9 @@ class Task(BpmnObject):
     def parse(self, element):
         super(Task, self).parse(element)
 
+    def get_info(self):
+        return {"type": self.tag}
+
 
 @bpmn_tag("bpmn:manualTask")
 class ManualTask(Task):
@@ -72,8 +76,11 @@ class UserTask(Task):
         for k, v in user_input.items():
             if k in self.form_fields:
                 state[k] = v
-
         return True
+
+    def get_info(self):
+        info = super(UserTask, self).get_info()
+        return {**info, "form_fields": self.form_fields}
 
 
 @bpmn_tag("bpmn:serviceTask")

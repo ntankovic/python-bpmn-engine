@@ -3,8 +3,6 @@ from aiohttp import web
 from uuid import uuid4
 import asyncio
 from bpmn_model import BpmnModel, UserFormMessage
-import random
-import sys
 
 uuid4 = lambda: 1  # hardcoded for easy testing
 
@@ -34,6 +32,18 @@ async def handle_form(request):
     return web.json_response({"status": "OK"})
 
 
+async def handle_task_info(request):
+    instance_id = request.match_info.get("instance_id")
+    task_id = request.match_info.get("task_id")
+    if instance_id not in app["bpmn_model"].instances:
+        raise aiohttp.web.HTTPNotFound
+    instance = app["bpmn_model"].instances[instance_id]
+    task = instance.model.elements[task_id]
+    print(task.get_info())
+
+    return web.json_response(task.get_info())
+
+
 async def handle_instance_info(request):
     instance_id = request.match_info.get("instance_id")
     if instance_id not in app["bpmn_model"].instances:
@@ -47,6 +57,7 @@ app = web.Application()
 app.on_startup.append(run_with_server)
 app.add_routes([web.post("/instance", handle_new)])
 app.add_routes([web.post("/instance/{instance_id}/task/{task_id}/form", handle_form)])
+app.add_routes([web.get("/instance/{instance_id}/task/{task_id}", handle_task_info)])
 app.add_routes([web.get("/instance/{instance_id}", handle_instance_info)])
 
 web.run_app(app)
