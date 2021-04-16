@@ -1,20 +1,22 @@
 # A python module for parsing and executing BPMN models
 
-Supported elements so far:
+Supported BPMN elements so far:
 
 -   Start/end events
 -   Task (Manual, User, Service) - dummy execution for now
 -   Gateways (Exclusive, Parallel)
 -   Sequence flow with conditions
 
-Soon:
+Pending features:
+
 -   full fledged REST API
 -   process instance persistence
 
-Example BPMN model:
+Example BPMN model used for demo:
 ![image](https://user-images.githubusercontent.com/714889/114159824-81c65d80-9926-11eb-8b74-6d5dd9bb82ea.png)
 
-Usage with an REST API: see `server.py` 
+The package can be used as a embedded bpmn-server (see `main.py`) or
+as a standalone server exposing a REST API (see `server.py`)
 
 Example usage:
 
