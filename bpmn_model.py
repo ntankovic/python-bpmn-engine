@@ -42,11 +42,11 @@ class BpmnModel:
                 if isinstance(t, StartEvent):
                     self.pending.append(t)
 
-    async def run(self, _id, variables):
+    async def create_instance(self, _id, variables):
         queue = asyncio.Queue()
         instance = BpmnInstance(_id, model=self, variables=variables, in_queue=queue)
         self.instances[_id] = instance
-        asyncio.create_task(instance.run())
+        return instance
 
 
 class BpmnInstance:

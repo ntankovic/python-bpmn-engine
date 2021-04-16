@@ -18,7 +18,8 @@ async def run_with_server(app):
 
 async def handle_new(request):
     _id = str(uuid4())
-    asyncio.create_task(app["bpmn_model"].run(_id, {}))
+    instance = await app["bpmn_model"].create_instance(_id, {})
+    asyncio.create_task(instance.run())
     return web.json_response({"id": _id})
 
 

@@ -5,73 +5,81 @@ import sys
 
 
 m = BpmnModel("models/model_01.bpmn")
-NUM_INSTANCES = 1
+NUM_INSTANCES = 2
 
 
-def get_workload():
-    queues = [asyncio.Queue() for i in range(NUM_INSTANCES)]
-    instances = [m.run(str(i + 1), {}, queues[i]) for i in range(NUM_INSTANCES)]
-    return queues, instances
+async def get_workload():
+    return [await m.create_instance(str(i + 1), {}) for i in range(NUM_INSTANCES)]
 
 
-async def simulate_user(queues):
+async def simulate_user(q):
     WAIT = 0.01
 
     def auto(text):
         return ""
 
     def ask(text):
-        return auto(text)
-        sys.stdout.write(f"\t[?] {text}")
-        sys.stdout.flush()
-        return sys.stdin.readline().strip()
+        text = auto(text)
+        # sys.stdout.write(f"\t[?] {text}")
+        # sys.stdout.flush()
+        # text = sys.stdin.readline().strip()
+        return (
+            {
+                key: value
+                for statement in (text.split(",") if "," in text else [text])
+                for key, value in statement.split("=")
+            }
+            if text
+            else {}
+        )
 
-    for i, q in enumerate(queues):
-        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
+    await asyncio.sleep(WAIT)
 
-        a = random.randint(1, 2)
-        default = f"option={a}"
-        data = ask(f"Form input: [{default}]")
-        q.put_nowait(UserFormMessage("t0", data if data != "" else default))
-        await asyncio.sleep(WAIT)
+    a = random.randint(1, 2)
+    default = f"option={a}"
+    data = ask(f"Form input: [{default}]")
+    q.put_nowait(UserFormMessage("t0", data if data != "" else default))
+    await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tup", ask("Form input [tup]: ")))
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("tup", ask("Form input [tup]: ")))
+    await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
+    await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tdown", ask("Form input [tdown]: ")))
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("tdown", ask("Form input [tdown]: ")))
+    await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
+    await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tup2", ask("Form input [tup2]: ")))
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("tup2", ask("Form input [tup2]: ")))
+    await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("t_wrong", "null"))  # Wrong message
+    await asyncio.sleep(WAIT)
 
-        q.put_nowait(UserFormMessage("tdown2", ask("Form input [tdown2]: ")))
-        await asyncio.sleep(WAIT)
+    q.put_nowait(UserFormMessage("tdown2", ask("Form input [tdown2]: ")))
+    await asyncio.sleep(WAIT)
 
 
 def run_serial():
     async def serial():
-        queues, instances = get_workload()
-        for i, (q, p) in enumerate(zip(queues, instances)):
+        instances = await get_workload()
+        for i, p in enumerate(instances):
             print(f"Running process {i+1}\n-----------------")
-            await asyncio.gather(simulate_user([q]), p)
+            await asyncio.gather(simulate_user(p.in_queue), p.run())
 
     asyncio.run(serial())
 
 
 def run_parallel():
     async def parallel():
-        queues, instances = get_workload()
-        await asyncio.gather(simulate_user(queues), *instances)
+        instances = await get_workload()
+        users = [simulate_user(i.in_queue) for i in instances]
+        processes = [p.run() for p in instances]
+        await asyncio.gather(*users, *processes)
 
     print(f"Running processes\n-----------------")
     asyncio.run(parallel())
