@@ -67,13 +67,14 @@ class BpmnInstance:
         }
 
     @classmethod
-    def check_conditions(cls, state, conditions, log):
-        log(f"\t- checking variables={state} with {conditions}... ")
+    def check_condition(cls, state, condition, log):
+        log(f"\t- checking variables={state} with {condition}... ")
         ok = False
-        try:
-            ok = all(eval(c, deepcopy(state), None) for c in conditions)
-        except Exception as e:
-            pass
+        if condition:
+            key = condition.partition(":")[0]
+            value = condition.partition(":")[2]
+            if key in state and state[key] == value:
+                ok = True
         log("\t  DONE: Result is", ok)
         return ok
 
@@ -144,9 +145,9 @@ class BpmnInstance:
                             default_fallback = elements[sequence.target]
                             continue
 
-                        if sequence.conditions:
-                            if self.check_conditions(
-                                self.variables, sequence.conditions, log
+                        if sequence.condition:
+                            if self.check_condition(
+                                self.variables, sequence.condition, log
                             ):
                                 next_tasks.append(elements[sequence.target])
                         else:

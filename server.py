@@ -7,7 +7,7 @@ from bpmn_model import BpmnModel, UserFormMessage
 uuid4 = lambda: 1  # hardcoded for easy testing
 
 
-m = BpmnModel("models/model_01.bpmn")  # hardcoded for now
+m = BpmnModel("models/diagram_1.bpmn")  # hardcoded for now
 
 
 async def run_with_server(app):

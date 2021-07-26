@@ -5,7 +5,7 @@ Supported BPMN elements so far:
 -   Start/end events
 -   Task (Manual, User, Service) - dummy execution for now
 -   Gateways (Exclusive, Parallel)
--   Sequence flow with conditions
+-   Sequence flow with conditions - condition must be in key:value format, currently string values are supported
 
 Pending features:
 
