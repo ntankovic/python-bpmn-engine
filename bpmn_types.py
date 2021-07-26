@@ -32,18 +32,18 @@ class SequenceFlow(BpmnObject):
     def __init__(self):
         self.source = None
         self.target = None
-        self.conditions = []
+        self.condition = None
 
     def parse(self, element):
         super(SequenceFlow, self).parse(element)
         self.source = element.attrib["sourceRef"]
         self.target = element.attrib["targetRef"]
         for c in element.findall("bpmn:conditionExpression", NS):
-            self.conditions.append(c.text)
+            self.condition = c.text
 
     def __repr__(self):
-        conditions = f" w. {len(self.conditions)} con. " if self.conditions else ""
-        return f"{type(self).__name__}({self._id}): {self.source} -> {self.target}{conditions}"
+        condition = f" w. {len(self.condition)} con. " if self.condition else ""
+        return f"{type(self).__name__}({self._id}): {self.source} -> {self.target}{condition}"
 
     pass
 
@@ -131,3 +131,7 @@ class ExclusiveGateway(Gateway):
             element.attrib["default"] if "default" in element.attrib else None
         )
         super(ExclusiveGateway, self).parse(element)
+
+@bpmn_tag("bpmn:sendTask")
+class SendTask(Task):
+    pass
