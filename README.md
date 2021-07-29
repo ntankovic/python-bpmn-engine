@@ -3,7 +3,14 @@
 Supported BPMN elements so far:
 
 -   Start/end events
--   Task (Manual, User, Service) - dummy execution for now
+-   Task (Manual, User, Service, Send) - dummy execution for now
+    - Service Task - keywords must be specified with Extension/Property
+        - Database keywords : db_location,db_parametars,db_request_type,db_key
+        - Web service keywords : web_service_location,web_service_request_type,web_service_parametars,web_service_response
+    - Send Task - keywords must be specified with Extension/Property
+        - Notification service keywords : notification_service_location, notification_service_request_type,
+        notification_service_parametars,
+        notification_service_receiver
 -   Gateways (Exclusive, Parallel)
 -   Sequence flow with conditions - condition must be in key:value format, currently string values are supported
 
