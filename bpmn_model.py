@@ -48,7 +48,6 @@ class BpmnModel:
         self.instances[_id] = instance
         return instance
 
-
 class BpmnInstance:
     def __init__(self, _id, model, variables, in_queue):
         self._id = _id
@@ -109,7 +108,6 @@ class BpmnInstance:
                 if isinstance(current, EndEvent):
                     exit = True
                     break
-
                 if isinstance(current, UserTask):
                     if (
                         message
@@ -122,6 +120,12 @@ class BpmnInstance:
                         if user_action:
                             log("\t- user sent:", user_action)
                         can_continue = current.run(self.variables, user_action)
+                elif isinstance(current, ServiceTask):
+                    log("DOING:", current)
+                    can_continue = current.run(self.variables, _id)
+                elif isinstance(current, SendTask):
+                    log("DOING:", current)
+                    can_continue = current.run(self.variables, _id)
                 else:
                     if isinstance(current, Task):
                         log("DOING:", current)
