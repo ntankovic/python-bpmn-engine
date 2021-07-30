@@ -103,8 +103,8 @@ class ServiceTask(Task):
                 if "db_key" in self.properties_fields:
                     if self.properties_fields["db_key"] in state:
                         response = requests.get(self.properties_fields["db_location"], params=dict({self.properties_fields["db_key"]:state[self.properties_fields["db_key"]]}))
-                        if "db_parametars" in self.properties_fields:
-                            for p in self.properties_fields["db_parametars"]:
+                        if "db_response" in self.properties_fields:
+                            for p in self.properties_fields["db_response"]:
                                 for r in response.json():
                                     if p in r:
                                         state[p]=r[p]
@@ -112,11 +112,30 @@ class ServiceTask(Task):
                         print("Key not found. db_key must be in the process state")
                 else:
                     print("db_key must be speficied in properties")
-                    #response = requests.get(self.properties_fields["db_location"])
-            elif self.properties_fields["db_request_type"] == "POST":
-                pass
+            elif self.properties_fields["db_request_type"] == "PATCH":
+                if "db_key" in self.properties_fields and self.properties_fields["db_key"] in state:
+                    param = {self.properties_fields["db_key"]:state[self.properties_fields["db_key"]]}
+                    if "db_parametars" in self.properties_fields:
+                        data_to_patch = dict()
+                        if isinstance(self.properties_fields["db_parametars"], str):
+                            p = self.properties_fields["db_parametars"]
+                            data_to_patch[p] = state[p]
+                        else:
+                            for p in self.properties_fields["db_parametars"]:
+                                data_to_patch[p] = state[p]
+                        response = requests.patch(self.properties_fields["db_location"], params=param, json=data_to_patch)
+                        if "db_response" in self.properties_fields:
+                            if isinstance(self.properties_fields["db_response"], str):
+                                p = self.properties_fields["db_response"]
+                                for r in response.json():
+                                    state[p] = r[p]
+                            else:
+                                for p in self.properties_fields["db_response"]:
+                                    for r in response.json():
+                                        if p in r:
+                                            state[p]=r[p]
             else:
-                print("Supported db_request_type values are GET and POST")
+                print("Supported db_request_type values are GET and PATCH")
         else:
             print("Database request type must be specified in properties as db_request_type")
     
@@ -125,9 +144,13 @@ class ServiceTask(Task):
             if self.properties_fields["web_service_request_type"] == "POST":
                 if "web_service_parametars" in self.properties_fields:
                     data_to_post = dict()
-                    for p in self.properties_fields["web_service_parametars"]:
-                        if p in state:
-                            data_to_post[p] = state[p]
+                    if isinstance(self.properties_fields["web_service_parametars"], str):
+                        p = self.properties_fields["web_service_parametars"]
+                        data_to_post[p] = state[p]
+                    else:
+                        for p in self.properties_fields["web_service_parametars"]:
+                            if p in state:
+                                data_to_post[p] = state[p]
                     response = requests.post(self.properties_fields["web_service_location"], json=data_to_post)
 
                     if "web_service_response" in self.properties_fields:
@@ -135,7 +158,6 @@ class ServiceTask(Task):
                             p = self.properties_fields["web_service_response"]
                             for r in response.json():
                                 if p in r:
-                                    print(r)
                                     state[p] = r[p]
                         else:
                             for p in self.properties_fields["web_service_response"]:
@@ -237,3 +259,4 @@ class SendTask(ServiceTask):
     def run(self, state, instance_id):
         if "notification_service_location" in self.properties_fields:
             self.run_notification_service(state, self.properties_fields["notification_service_location"], instance_id)
+        return True
