@@ -68,11 +68,14 @@ class ManualTask(Task):
 class UserTask(Task):
     def __init__(self):
         self.form_fields = {}
+        self.documentation= ""
 
     def parse(self, element):
         super(UserTask, self).parse(element)
         for f in element.findall(".//camunda:formField", NS):
             self.form_fields[f.attrib["id"]] = f.attrib["type"]
+        for d in element.findall(".//bpmn:documentation", NS):
+            self.documentation = d.text
 
     def run(self, state, user_input):
         for k, v in user_input.items():
@@ -82,7 +85,7 @@ class UserTask(Task):
 
     def get_info(self):
         info = super(UserTask, self).get_info()
-        return {**info, "form_fields": self.form_fields}
+        return {**info, "form_fields": self.form_fields, "documentation":self.documentation}
 
 
 @bpmn_tag("bpmn:serviceTask")
@@ -238,11 +241,21 @@ class SendTask(ServiceTask):
                         params = {"to": state[self.properties_fields["notification_service_receiver"]]}
                         if "notification_service_parametars" in self.properties_fields:
                             data_to_post = dict()
-                            for p in self.properties_fields["notification_service_parametars"]:
+                            if isinstance(self.properties_fields["notification_service_parametars"], str):
+                                p = self.properties_fields["notification_service_parametars"]
                                 if p == "id_instance":
                                     data_to_post[p] = instance_id
-                                if p in state:
-                                    data_to_post[p] = state[p]
+                                else:
+                                    if p in state:
+                                        data_to_post[p] = state[p]
+                            else:
+                                for p in self.properties_fields["notification_service_parametars"]:
+                                    if p == "id_instance":
+                                        data_to_post[p] = instance_id
+                                    if p in state:
+                                        data_to_post[p] = state[p]
+                            if "notification_service_next_task" in self.properties_fields:
+                                data_to_post["next_task"] = self.properties_fields["notification_service_next_task"]
                             response = requests.post(self.properties_fields["notification_service_location"], json=data_to_post, params=params)
                         else:
                             pass

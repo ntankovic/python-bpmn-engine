@@ -10,7 +10,8 @@ Supported BPMN elements so far:
     - Send Task - keywords must be specified with Extension/Property
         - Notification service keywords : notification_service_location, notification_service_request_type,
         notification_service_parametars,
-        notification_service_receiver
+        notification_service_receiver,
+        notification_service_next_task
 -   Gateways (Exclusive, Parallel)
 -   Sequence flow with conditions - condition must be in key:value format, currently string values are supported
 
