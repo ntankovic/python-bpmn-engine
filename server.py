@@ -3,6 +3,7 @@ from aiohttp import web
 from uuid import uuid4
 import asyncio
 from bpmn_model import BpmnModel, UserFormMessage
+import aiohttp_cors
 
 uuid4 = lambda: 1  # hardcoded for easy testing
 
@@ -59,5 +60,18 @@ app.add_routes([web.post("/instance", handle_new)])
 app.add_routes([web.post("/instance/{instance_id}/task/{task_id}/form", handle_form)])
 app.add_routes([web.get("/instance/{instance_id}/task/{task_id}", handle_task_info)])
 app.add_routes([web.get("/instance/{instance_id}", handle_instance_info)])
+
+cors = aiohttp_cors.setup(app, defaults={
+    "*": aiohttp_cors.ResourceOptions(
+        allow_credentials=True,
+        expose_headers="*",
+        allow_headers="*",
+        allow_methods="*"
+    )
+})
+
+for route in list(app.router.routes()):
+    cors.add(route)
+
 
 web.run_app(app)
