@@ -73,7 +73,25 @@ class UserTask(Task):
     def parse(self, element):
         super(UserTask, self).parse(element)
         for f in element.findall(".//camunda:formField", NS):
-            self.form_fields[f.attrib["id"]] = f.attrib["type"]
+            form_field_properties_dict = {}
+            form_field_validations_dict = {}
+            
+            self.form_fields[f.attrib["id"]] = {}
+            self.form_fields[f.attrib["id"]]["type"] = f.attrib["type"]
+            if "label" in f.attrib:
+                self.form_fields[f.attrib["id"]]["label"] = f.attrib["label"]
+            else:
+                self.form_fields[f.attrib["id"]]["label"] = ""
+            
+            for p in f.findall(".//camunda:property", NS):
+                form_field_properties_dict[p.attrib["id"]] = p.attrib["value"]
+
+            for v in f.findall(".//camunda:constraint", NS):
+                form_field_validations_dict[v.attrib["name"]] = v.attrib["config"]
+            
+            self.form_fields[f.attrib["id"]]["validation"] = form_field_validations_dict
+            self.form_fields[f.attrib["id"]]["properties"] = form_field_properties_dict
+
         for d in element.findall(".//bpmn:documentation", NS):
             self.documentation = d.text
 
