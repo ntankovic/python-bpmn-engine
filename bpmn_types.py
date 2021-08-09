@@ -119,47 +119,43 @@ class ServiceTask(Task):
                 self.properties_fields[f.attrib["name"]] = f.attrib["value"]
     
     def run_database_service(self, state, database_location, instance_id):
+        if "db_key" in self.properties_fields and self.properties_fields["db_key"] in state:
+            param = {self.properties_fields["db_key"]:state[self.properties_fields["db_key"]]}
+        else:
+            param = {}
+
+        if "db_parametars" in self.properties_fields:
+            data = {}
+            if isinstance(self.properties_fields["db_parametars"], str):
+                p = self.properties_fields["db_parametars"]
+                data[p] = state[p]
+            else:
+                for p in self.properties_fields["db_parametars"]:
+                    data[p] = state[p]
+        else:
+            data = {}
+        
         if "db_request_type" in self.properties_fields:
             if self.properties_fields["db_request_type"] == "GET":
-                if "db_key" in self.properties_fields:
-                    if self.properties_fields["db_key"] in state:
-                        response = requests.get(self.properties_fields["db_location"], params=dict({self.properties_fields["db_key"]:state[self.properties_fields["db_key"]]}))
-                        if "db_response" in self.properties_fields:
-                            for p in self.properties_fields["db_response"]:
-                                for r in response.json():
-                                    if p in r:
-                                        state[p]=r[p]
-                    else:
-                        print("Key not found. db_key must be in the process state")
-                else:
-                    print("db_key must be speficied in properties")
+                response = requests.get(self.properties_fields["db_location"], params=param, json=data)
+            elif self.properties_fields["db_request_type"] == "POST":
+                response = requests.post(self.properties_fields["db_location"], params=param, json=data)
             elif self.properties_fields["db_request_type"] == "PATCH":
-                if "db_key" in self.properties_fields and self.properties_fields["db_key"] in state:
-                    param = {self.properties_fields["db_key"]:state[self.properties_fields["db_key"]]}
-                    if "db_parametars" in self.properties_fields:
-                        data_to_patch = dict()
-                        if isinstance(self.properties_fields["db_parametars"], str):
-                            p = self.properties_fields["db_parametars"]
-                            data_to_patch[p] = state[p]
-                        else:
-                            for p in self.properties_fields["db_parametars"]:
-                                data_to_patch[p] = state[p]
-                        response = requests.patch(self.properties_fields["db_location"], params=param, json=data_to_patch)
-                        if "db_response" in self.properties_fields:
-                            if isinstance(self.properties_fields["db_response"], str):
-                                p = self.properties_fields["db_response"]
-                                for r in response.json():
-                                    state[p] = r[p]
-                            else:
-                                for p in self.properties_fields["db_response"]:
-                                    for r in response.json():
-                                        if p in r:
-                                            state[p]=r[p]
-            else:
-                print("Supported db_request_type values are GET and PATCH")
+                response = requests.patch(self.properties_fields["db_location"], params=param, json=data)
         else:
-            print("Database request type must be specified in properties as db_request_type")
-    
+            print("Database service request type must be specified in properties as db_request_type")
+        
+        if "db_response" in self.properties_fields:
+            if isinstance(self.properties_fields["db_response"], str):
+                p = self.properties_fields["db_response"]
+                for r in response.json():
+                    state[p] = r[p]
+            else:
+                for p in self.properties_fields["db_response"]:
+                    for r in response.json():
+                        if p in r:
+                            state[p]=r[p]
+
     def run_web_service(self, state, web_service_location, instance_id):
         if "web_service_request_type" in self.properties_fields:
             if self.properties_fields["web_service_request_type"] == "POST":
