@@ -15,7 +15,7 @@ async def run_with_server(app):
     app["bpmn_model"] = m
 
 
-async def handle_new(request):
+async def handle_new_instance(request):
     _id = str(uuid4())
     instance = await app["bpmn_model"].create_instance(_id, {})
     asyncio.create_task(instance.run())
@@ -56,7 +56,7 @@ async def handle_instance_info(request):
 
 app = web.Application()
 app.on_startup.append(run_with_server)
-app.add_routes([web.post("/instance", handle_new)])
+app.add_routes([web.post("/instance", handle_new_instance)])
 app.add_routes([web.post("/instance/{instance_id}/task/{task_id}/form", handle_form)])
 app.add_routes([web.get("/instance/{instance_id}/task/{task_id}", handle_task_info)])
 app.add_routes([web.get("/instance/{instance_id}", handle_instance_info)])
