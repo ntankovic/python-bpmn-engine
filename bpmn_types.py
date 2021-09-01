@@ -118,9 +118,9 @@ class ServiceTask(Task):
             else:
                 self.properties_fields[f.attrib["name"]] = f.attrib["value"]
     
-    def run_database_service(self, state, database_location, instance_id):
-        if "db_key" in self.properties_fields and self.properties_fields["db_key"] in state:
-            param = {self.properties_fields["db_key"]:state[self.properties_fields["db_key"]]}
+    def run_database_service(self, variables, database_location, instance_id):
+        if "db_key" in self.properties_fields and self.properties_fields["db_key"] in variables:
+            param = {self.properties_fields["db_key"]:variables[self.properties_fields["db_key"]]}
         else:
             param = {}
 
@@ -128,10 +128,10 @@ class ServiceTask(Task):
             data = {}
             if isinstance(self.properties_fields["db_parametars"], str):
                 p = self.properties_fields["db_parametars"]
-                data[p] = state[p]
+                data[p] = variables[p]
             else:
                 for p in self.properties_fields["db_parametars"]:
-                    data[p] = state[p]
+                    data[p] = variables[p]
         else:
             data = {}
         
@@ -149,25 +149,25 @@ class ServiceTask(Task):
             if isinstance(self.properties_fields["db_response"], str):
                 p = self.properties_fields["db_response"]
                 for r in response.json():
-                    state[p] = r[p]
+                    variables[p] = r[p]
             else:
                 for p in self.properties_fields["db_response"]:
                     for r in response.json():
                         if p in r:
-                            state[p]=r[p]
+                            variables[p]=r[p]
 
-    def run_web_service(self, state, web_service_location, instance_id):
+    def run_web_service(self, variables, web_service_location, instance_id):
         if "web_service_request_type" in self.properties_fields:
             if self.properties_fields["web_service_request_type"] == "POST":
                 if "web_service_parametars" in self.properties_fields:
                     data_to_post = dict()
                     if isinstance(self.properties_fields["web_service_parametars"], str):
                         p = self.properties_fields["web_service_parametars"]
-                        data_to_post[p] = state[p]
+                        data_to_post[p] = variables[p]
                     else:
                         for p in self.properties_fields["web_service_parametars"]:
-                            if p in state:
-                                data_to_post[p] = state[p]
+                            if p in variables:
+                                data_to_post[p] = variables[p]
                     response = requests.post(self.properties_fields["web_service_location"], json=data_to_post)
 
                     if "web_service_response" in self.properties_fields:
@@ -175,22 +175,22 @@ class ServiceTask(Task):
                             p = self.properties_fields["web_service_response"]
                             for r in response.json():
                                 if p in r:
-                                    state[p] = r[p]
+                                    variables[p] = r[p]
                         else:
                             for p in self.properties_fields["web_service_response"]:
                                 for r in response.json():
                                     if p in r:
-                                        state[p] = r[p]
+                                        variables[p] = r[p]
             else:
                 print("Supported web_service_request_type value is POST")
         else:
             print("Web service request type must be specified in properties as web_service_request_type")
     
-    def run(self, state, instance_id):
+    def run(self, variables, instance_id):
         if "db_location" in self.properties_fields:
-            self.run_database_service(state, self.properties_fields["db_location"], instance_id)
+            self.run_database_service(variables, self.properties_fields["db_location"], instance_id)
         if "web_service_location" in self.properties_fields:
-            self.run_web_service(state, self.properties_fields["web_service_location"], instance_id)
+            self.run_web_service(variables, self.properties_fields["web_service_location"], instance_id)
         return True
 
             
@@ -247,12 +247,12 @@ class SendTask(ServiceTask):
     def parse(self, element):
         super(SendTask, self).parse(element)
     
-    def run_notification_service(self, state, notification_service_location, instance_id):
+    def run_notification_service(self, variables, notification_service_location, instance_id):
         if "notification_service_request_type" in self.properties_fields:
             if self.properties_fields["notification_service_request_type"] == "POST":
                 if "notification_service_receiver" in self.properties_fields:
-                    if self.properties_fields["notification_service_receiver"] in state:
-                        params = {"to": state[self.properties_fields["notification_service_receiver"]]}
+                    if self.properties_fields["notification_service_receiver"] in variables:
+                        params = {"to": variables[self.properties_fields["notification_service_receiver"]]}
                         if "notification_service_parametars" in self.properties_fields:
                             data_to_post = dict()
                             if isinstance(self.properties_fields["notification_service_parametars"], str):
@@ -260,14 +260,14 @@ class SendTask(ServiceTask):
                                 if p == "id_instance":
                                     data_to_post[p] = instance_id
                                 else:
-                                    if p in state:
-                                        data_to_post[p] = state[p]
+                                    if p in variables:
+                                        data_to_post[p] = variables[p]
                             else:
                                 for p in self.properties_fields["notification_service_parametars"]:
                                     if p == "id_instance":
                                         data_to_post[p] = instance_id
-                                    if p in state:
-                                        data_to_post[p] = state[p]
+                                    if p in variables:
+                                        data_to_post[p] = variables[p]
                             if "notification_service_next_task" in self.properties_fields:
                                 data_to_post["next_task"] = self.properties_fields["notification_service_next_task"]
                             response = requests.post(self.properties_fields["notification_service_location"], json=data_to_post, params=params)
@@ -283,7 +283,7 @@ class SendTask(ServiceTask):
                 print("Supported notification_service_request_type value is POST")
         else:
             print("Notification service request type must be specified in properties as notification_service_request_type")
-    def run(self, state, instance_id):
+    def run(self, variables, instance_id):
         if "notification_service_location" in self.properties_fields:
-            self.run_notification_service(state, self.properties_fields["notification_service_location"], instance_id)
+            self.run_notification_service(variables, self.properties_fields["notification_service_location"], instance_id)
         return True

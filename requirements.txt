@@ -8,6 +8,7 @@ chardet==4.0.0
 charset-normalizer==2.0.4
 idna==3.2
 multidict==5.1.0
+pony==0.7.14
 requests==2.26.0
 typing-extensions==3.10.0.0
 urllib3==1.26.6
