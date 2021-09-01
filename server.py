@@ -4,8 +4,12 @@ from uuid import uuid4
 import asyncio
 from bpmn_model import BpmnModel, UserFormMessage
 import aiohttp_cors
+import db_connector
 
-uuid4 = lambda: 1  # hardcoded for easy testing
+#Setup database
+db_connector.setup_db()
+
+#uuid4 = lambda: 2  # hardcoded for easy testing
 
 
 m = BpmnModel("models/diagram_1.bpmn")  # hardcoded for now
@@ -13,7 +17,12 @@ m = BpmnModel("models/diagram_1.bpmn")  # hardcoded for now
 
 async def run_with_server(app):
     app["bpmn_model"] = m
-
+    log = db_connector.get_running_instances_log()
+    for l in log:
+        for key in l:
+            instance = await app["bpmn_model"].create_instance(key, {})
+            instance = await instance.run_from_log(l[key]["events"])
+            asyncio.create_task(instance.run())
 
 async def handle_new_instance(request):
     _id = str(uuid4())

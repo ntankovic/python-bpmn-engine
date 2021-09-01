@@ -6,6 +6,8 @@ from copy import deepcopy
 from collections import defaultdict, deque
 from functools import partial
 import asyncio
+import db_connector
+from datetime import datetime
 
 
 class UserFormMessage:
@@ -20,8 +22,9 @@ class BpmnModel:
         self.elements = {}
         self.flow = defaultdict(list)
         self.instances = {}
+        self.model_path = model_path
 
-        model_tree = ET.parse(model_path)
+        model_tree = ET.parse(self.model_path)
         model_root = model_tree.getroot()
         process = model_root.find("bpmn:process", NS)
 
@@ -56,7 +59,7 @@ class BpmnInstance:
         self.in_queue = in_queue
         self.state = "initialized"
         self.pending = deepcopy(self.model.pending)
-
+        
     def get_info(self):
         return {
             "state": self.state,
@@ -77,19 +80,28 @@ class BpmnInstance:
         log("\t  DONE: Result is", ok)
         return ok
 
-    async def run(self):
+    async def run_from_log(self, log):
+        for l in log:
+            if l.get("activity_id") in self.model.elements:
+                pending_elements_list = []
+                for p in l.get("pending"):
+                    pending_elements_list.append(self.model.elements[p])
+                self.pending = pending_elements_list
+                self.variables = {**l.get("activity_variables"), **self.variables}
+        return self
 
+    async def run(self):
+        
         self.state = "running"
         _id = self._id
         prefix = f"\t[{_id}]"
         log = partial(print, prefix)  # if _id == "2" else lambda *x: x
 
         in_queue = self.in_queue
-        self.pending = deepcopy(self.model.pending)
         elements = deepcopy(self.model.elements)
         flow = deepcopy(self.model.flow)
         queue = deque()
-
+        
         while len(self.pending) > 0:
 
             # process incoming messages
@@ -104,10 +116,27 @@ class BpmnInstance:
             if message:
                 log("--> msg in:", message and message.task_id)
 
+            #Helper current dictionary
+            current_and_variables_dict = {}
+
             for idx, current in enumerate(self.pending):
+                #Helper variables dict
+                before_variables = deepcopy(self.variables)
+
+                if isinstance(current, StartEvent):
+                    #Helper variables for DB insert
+                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    current_and_variables_dict[current._id] = new_variables
+                    #Create new running instance
+                    db_connector.add_running_instance(instance_id=self._id)
+
                 if isinstance(current, EndEvent):
                     exit = True
+                    del self.pending[idx]
+                    #Add EndEvent to DB
+                    db_connector.add_event(model_name = self.model.model_path, instance_id = self._id, activity_id = current._id, timestamp = datetime.now(), pending = [], activity_variables={})
                     break
+
                 if isinstance(current, UserTask):
                     if (
                         message
@@ -120,16 +149,32 @@ class BpmnInstance:
                         if user_action:
                             log("\t- user sent:", user_action)
                         can_continue = current.run(self.variables, user_action)
+                        #Helper variables for DB insert
+                        new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                        current_and_variables_dict[current._id] = new_variables
+
                 elif isinstance(current, ServiceTask):
                     log("DOING:", current)
                     can_continue = current.run(self.variables, _id)
+                    #Helper variables for DB insert
+                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    current_and_variables_dict[current._id] = new_variables
+
                 elif isinstance(current, SendTask):
                     log("DOING:", current)
                     can_continue = current.run(self.variables, _id)
+                    #Helper variables for DB insert
+                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    current_and_variables_dict[current._id] = new_variables
+
                 else:
                     if isinstance(current, Task):
                         log("DOING:", current)
                     can_continue = current.run()
+                    #Helper variables for DB insert
+                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    current_and_variables_dict[current._id] = new_variables
+
 
                 if can_continue:
                     del self.pending[idx]
@@ -171,8 +216,15 @@ class BpmnInstance:
             else:
                 log("Waiting for user...", self.pending)
                 queue.append(await in_queue.get())
-
+            
+            #Insert finished events into DB
+            for c in current_and_variables_dict:
+                #Add each current into DB
+                db_connector.add_event(model_name= self.model.model_path, instance_id=self._id, activity_id=c, timestamp=datetime.now(), pending = [pending._id for pending in self.pending], activity_variables=current_and_variables_dict[c])
+           
         log("DONE")
         self.state = "finished"
         self.pending = []
+        #Running instance finished
+        db_connector.finish_running_instance(self._id)
         return self.variables
