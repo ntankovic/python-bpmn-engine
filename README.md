@@ -23,7 +23,6 @@ Supported BPMN elements so far:
 Pending features:
 
 -   full fledged REST API
--   process instance persistence
 
 Example BPMN model used for demo:
 ![image](https://user-images.githubusercontent.com/714889/114159824-81c65d80-9926-11eb-8b74-6d5dd9bb82ea.png)

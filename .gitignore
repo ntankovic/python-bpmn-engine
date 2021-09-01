@@ -5,3 +5,4 @@ models/test_za_pdf.bpmn
 models/test_za_frontend.bpmn
 models/test_za_log.bpmn
 py-bpmn-env
+database/db.sqlite
