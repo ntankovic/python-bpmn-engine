@@ -20,7 +20,7 @@ Supported BPMN elements so far:
     - Call Activity
         - CallActivity Type **must** be BPMN
         - Called Element **must** be *process_id* of process you wish to start
-        - Binding **must** be **deployment** if you wish to call process from other BPMN diagram, other bindings asumes that called process is inside same diagram
+        - Binding **must** be **deployment** if you wish to call process from other BPMN diagram, other bindings assumes that called process is inside the same diagram as Call Activity
 -   Gateways (Exclusive, Parallel)
 -   Sequence flow with conditions - condition must be in key:value format, currently string values are supported
 -   Collaboration Diagrams
