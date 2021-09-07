@@ -1,8 +1,8 @@
 __pycache__
 .vscode
 models/diagram_1.bpmn
-models/test_za_pdf.bpmn
-models/test_za_frontend.bpmn
-models/test_za_log.bpmn
+models/chatbot_model.bpmn
+models/test_podproces.bpmn
+models/test_call_activity.bpmn
 py-bpmn-env
 database/
