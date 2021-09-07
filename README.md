@@ -3,7 +3,7 @@
 Supported BPMN elements so far:
 
 -   Start/end events
--   Task (Manual, User, Service, Send) - dummy execution for now
+-   Task (Manual, User, Service, Send, Call Activity)
     - User Task
         - Form fields
             - Id, Type, Label
@@ -17,12 +17,19 @@ Supported BPMN elements so far:
         notification_service_parametars,
         notification_service_receiver,
         notification_service_next_task
+    - Call Activity
+        - CallActivity Type **must** be BPMN
+        - Called Element **must** be *process_id* of process you wish to start
+        - Binding **must** be **deployment** if you wish to call process from other BPMN diagram, other bindings asumes that called process is inside same diagram
 -   Gateways (Exclusive, Parallel)
 -   Sequence flow with conditions - condition must be in key:value format, currently string values are supported
+-   Collaboration Diagrams
+    - In case there is more then 1 Pool in Collaboration diagram you **MUST** specify in Extensions/Properties a property with `name=is_main` and `value=True` for your **main** Pool so the engine knows where to start the process
 
 Pending features:
 
 -   full fledged REST API
+-   in/out variables for Call Activity 
 
 Example BPMN model used for demo:
 ![image](https://user-images.githubusercontent.com/714889/114159824-81c65d80-9926-11eb-8b74-6d5dd9bb82ea.png)

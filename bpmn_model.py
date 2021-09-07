@@ -8,6 +8,8 @@ from functools import partial
 import asyncio
 import db_connector
 from datetime import datetime
+import os
+from uuid import uuid4
 
 
 class UserFormMessage:
@@ -22,43 +24,86 @@ class BpmnModel:
         self.elements = {}
         self.flow = defaultdict(list)
         self.instances = {}
+        self.process_elements = {}
+        self.process_pending = defaultdict(list)
+        self.main_collaboration_process = None
         self.model_path = model_path
+        self.subprocesses = {}
 
         model_tree = ET.parse(self.model_path)
         model_root = model_tree.getroot()
-        process = model_root.find("bpmn:process", NS)
+        processes = model_root.findall("bpmn:process", NS)
+        for process in processes:
+            p = BPMN_MAPPINGS["bpmn:process"]()
+            p.parse(process)
+            self.process_elements[p._id] = {}
+            #Check for Collaboration
+            if len(processes)>1 and p.is_main_in_collaboration:
+                self.main_collaboration_process = p._id
+            #Parse all elements in the process
+            for tag, _type in BPMN_MAPPINGS.items():
+                for e in process.findall(f"{tag}", NS):
+                     t = _type()
+                     t.parse(e)
+                     if isinstance(t, CallActivity):
+                         self.subprocesses[t.called_element] = t.deployment
+                     if isinstance(t, SequenceFlow):
+                         self.flow[t.source].append(t)
+                     if isinstance(t, ExclusiveGateway):
+                         if t.default:
+                             self.elements[t.default].default = True
+                     self.elements[t._id] = t
+                     self.process_elements[p._id][t._id] = t
+                     if isinstance(t, StartEvent):
+                         self.pending.append(t)
+                         self.process_pending[p._id].append(t)
+        #Check if there is single deployement subprocess
+        for k,v in self.subprocesses.items():
+            if v:
+                self.handle_deployment_subprocesses()
+                break
 
-        for tag, _type in BPMN_MAPPINGS.items():
-            for e in process.findall(f"{tag}", NS):
-                t = _type()
-                t.parse(e)
-
-                if isinstance(t, SequenceFlow):
-                    self.flow[t.source].append(t)
-
-                if isinstance(t, ExclusiveGateway):
-                    if t.default:
-                        self.elements[t.default].default = True
-
-                self.elements[t._id] = t
-
-                if isinstance(t, StartEvent):
-                    self.pending.append(t)
-
-    async def create_instance(self, _id, variables):
+    async def create_instance(self, _id, variables, process=None):
         queue = asyncio.Queue()
-        instance = BpmnInstance(_id, model=self, variables=variables, in_queue=queue)
+        if not process:
+            if self.main_collaboration_process:
+                #If Collaboration diagram
+                process = self.main_collaboration_process
+            else:
+                #If Process diagram
+                process = list(self.process_elements)[0]
+        instance = BpmnInstance(_id, model=self, variables=variables, in_queue=queue, process=process)
         self.instances[_id] = instance
         return instance
+    
+    #Takes model_path needed for deployed subprocess
+    def handle_deployment_subprocesses(self):
+        models_directory = self.model_path.split("/")[:-1]
+        models_directory = "/".join(models_directory) + "/"
+        
+        other_models_list = []
+        
+        for m in os.listdir(models_directory):
+            if models_directory+m == self.model_path:
+                continue
+            other_model = BpmnModel(models_directory+m)
+            other_models_list.append(other_model)
+        for other_model in other_models_list:
+            for subprocess_key in self.subprocesses.keys():
+                for process_key in other_model.process_elements.keys():
+                    if subprocess_key == process_key:
+                        self.subprocesses[subprocess_key] = other_model.model_path
+
 
 class BpmnInstance:
-    def __init__(self, _id, model, variables, in_queue):
+    def __init__(self, _id, model, variables, in_queue, process):
         self._id = _id
         self.model = model
         self.variables = deepcopy(variables)
         self.in_queue = in_queue
         self.state = "initialized"
-        self.pending = deepcopy(self.model.pending)
+        self.pending = deepcopy(self.model.process_pending[process])
+        self.process = process
         
     def get_info(self):
         return {
@@ -90,6 +135,17 @@ class BpmnInstance:
                 self.variables = {**l.get("activity_variables"), **self.variables}
         return self
 
+    async def run_subprocess(self, process_id):
+        new_subproces_instance_id = str(uuid4())
+        if not self.model.subprocesses[process_id]:
+            new_subprocess_instance = await self.model.create_instance(new_subproces_instance_id, {}, process_id)
+            finished_subprocess = await new_subprocess_instance.run()
+        else:
+            subprocess_model = BpmnModel(self.model.subprocesses[process_id])
+            new_subproces_instance = await subprocess_model.create_instance(new_subproces_instance_id, {}, process_id)
+            finished_subprocess = await new_subproces_instance.run()
+        return True
+    
     async def run(self):
         
         self.state = "running"
@@ -98,7 +154,8 @@ class BpmnInstance:
         log = partial(print, prefix)  # if _id == "2" else lambda *x: x
 
         in_queue = self.in_queue
-        elements = deepcopy(self.model.elements)
+        #Take only elements of running process
+        elements = deepcopy(self.model.process_elements[self.process])
         flow = deepcopy(self.model.flow)
         queue = deque()
         
@@ -163,6 +220,14 @@ class BpmnInstance:
                 elif isinstance(current, SendTask):
                     log("DOING:", current)
                     can_continue = current.run(self.variables, _id)
+                    #Helper variables for DB insert
+                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    current_and_variables_dict[current._id] = new_variables
+
+                elif isinstance(current, CallActivity):
+                    #TODO implement Variables tab CallActivity
+                    log("DOING:",current)
+                    can_continue = await self.run_subprocess(current.called_element)
                     #Helper variables for DB insert
                     new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
                     current_and_variables_dict[current._id] = new_variables
