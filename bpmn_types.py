@@ -160,13 +160,15 @@ class ServiceTask(Task):
                         helper_list.append(lv.text)
                     input_dict[inparam.attrib["name"]] = helper_list
                 elif inparam.findall(".camunda:map",NS):
-                    #TODO implement dict handling
-                    pass
+                    helper_dict = {}
+                    for mv in inparam.find("camunda:map",NS):
+                        helper_dict[mv.attrib["key"]] = mv.text
+                    input_dict[inparam.attrib["name"]] = helper_dict
                 elif inparam.findall(".camunda:script",NS):
                     #script not supported
                     pass
                 else:
-                    input_dict[inparam.attrib["name"]] = inparam.text
+                    input_dict[inparam.attrib["name"]] = inparam.text if inparam.text else ""
             for outparam in io.findall(".camunda:outputParameter",NS):
                 if outparam.findall(".camunda:map",NS):
                     output_dict[outparam.attrib["name"]]={}
@@ -178,124 +180,57 @@ class ServiceTask(Task):
                 else:
                     output_dict[outparam.attrib["name"]]=""
 
-    def run_database_service(self, variables, database_location, instance_id):
-        if "db_key" in self.properties_fields and self.properties_fields["db_key"] in variables:
-            param = {self.properties_fields["db_key"]:variables[self.properties_fields["db_key"]]}
-        else:
-            param = {}
+    def run_connector(self, variables, instance_id):
+        #Check for URL parameters
+        parameters = {}
+        if self.connector_fields["input_variables"].get("url_parameter"):
+            for key, value in self.connector_fields["input_variables"]["url_parameter"].items():
+                #Parse expression and add to parameters
+                parameters[key] = parse_expression(value, variables)
 
-        if "db_parametars" in self.properties_fields:
-            data = {}
-            if isinstance(self.properties_fields["db_parametars"], str):
-                p = self.properties_fields["db_parametars"]
-                data[p] = variables[p]
-            else:
-                for p in self.properties_fields["db_parametars"]:
-                    data[p] = variables[p]
-        else:
-            data = {}
-        
-        if "db_request_type" in self.properties_fields:
-            if self.properties_fields["db_request_type"] == "GET":
-                response = requests.get(self.properties_fields["db_location"], params=param, json=data)
-            elif self.properties_fields["db_request_type"] == "POST":
-                response = requests.post(self.properties_fields["db_location"], params=param, json=data)
-            elif self.properties_fields["db_request_type"] == "PATCH":
-                response = requests.patch(self.properties_fields["db_location"], params=param, json=data)
-        else:
-            print("Database service request type must be specified in properties as db_request_type")
-        
-        if "db_response" in self.properties_fields:
-            if isinstance(self.properties_fields["db_response"], str):
-                p = self.properties_fields["db_response"]
+        #JSON data for API
+        data = {}
+        for key, value in self.input_variables.items():
+            #Parse expression if it exists 
+            if isinstance(value, str):
+                value = parse_expression(value, variables)
+            elif isinstance(value, list):
+                for i,v in enumerate(value):
+                    value[i] = parse_expression(v, variables)
+            elif isinstance(value, dict):
+                for k,v in value.items():
+                    value[k] = parse_expression(v, variables)
+            #Special case for instance id
+            if key == "id_instance":
+                value = instance_id
+            #Add parsed value to data
+            data[key] = value
+        #Check method and make request
+        if self.connector_fields["input_variables"].get("method"):
+            if self.connector_fields["input_variables"]["method"] == "GET":
+                response = requests.get(self.connector_fields["input_variables"]["url"], params=parameters, json=data)
+            elif self.connector_fields["input_variables"]["method"] == "POST":
+                response = requests.post(self.connector_fields["input_variables"]["url"], params=parameters, json=data)
+            elif self.connector_fields["input_variables"]["method"] == "PATCH":
+                response = requests.patch(self.properties_fields["db_location"], params=parameters, json=data)
+        #Check for output variables
+        if self.output_variables:
+            for key in self.output_variables:
                 for r in response.json():
-                    variables[p] = r[p]
-            else:
-                for p in self.properties_fields["db_response"]:
-                    for r in response.json():
-                        if p in r:
-                            variables[p]=r[p]
+                    if key in r:
+                        variables[key] = r[key]
 
-    def run_web_service(self, variables, web_service_location, instance_id):
-        if "web_service_request_type" in self.properties_fields:
-            if self.properties_fields["web_service_request_type"] == "POST":
-                if "web_service_parametars" in self.properties_fields:
-                    data_to_post = dict()
-                    if isinstance(self.properties_fields["web_service_parametars"], str):
-                        p = self.properties_fields["web_service_parametars"]
-                        data_to_post[p] = variables[p]
-                    else:
-                        for p in self.properties_fields["web_service_parametars"]:
-                            if p in variables:
-                                data_to_post[p] = variables[p]
-                    response = requests.post(self.properties_fields["web_service_location"], json=data_to_post)
-
-                    if "web_service_response" in self.properties_fields:
-                        if isinstance(self.properties_fields["web_service_response"], str):
-                            p = self.properties_fields["web_service_response"]
-                            for r in response.json():
-                                if p in r:
-                                    variables[p] = r[p]
-                        else:
-                            for p in self.properties_fields["web_service_response"]:
-                                for r in response.json():
-                                    if p in r:
-                                        variables[p] = r[p]
-            else:
-                print("Supported web_service_request_type value is POST")
-        else:
-            print("Web service request type must be specified in properties as web_service_request_type")
-    
     def run(self, variables, instance_id):
-        if "db_location" in self.properties_fields:
-            self.run_database_service(variables, self.properties_fields["db_location"], instance_id)
-        if "web_service_location" in self.properties_fields:
-            self.run_web_service(variables, self.properties_fields["web_service_location"], instance_id)
+        if self.connector_fields["connector_id"] == "http-connector":
+            self.run_connector(variables, instance_id)
         return True
 
 @bpmn_tag("bpmn:sendTask")
 class SendTask(ServiceTask):
-    def run_notification_service(self, variables, notification_service_location, instance_id):
-        if "notification_service_request_type" in self.properties_fields:
-            if self.properties_fields["notification_service_request_type"] == "POST":
-                if "notification_service_receiver" in self.properties_fields:
-                    if self.properties_fields["notification_service_receiver"] in variables:
-                        params = {"to": variables[self.properties_fields["notification_service_receiver"]]}
-                        if "notification_service_parametars" in self.properties_fields:
-                            data_to_post = dict()
-                            if isinstance(self.properties_fields["notification_service_parametars"], str):
-                                p = self.properties_fields["notification_service_parametars"]
-                                if p == "id_instance":
-                                    data_to_post[p] = instance_id
-                                else:
-                                    if p in variables:
-                                        data_to_post[p] = variables[p]
-                            else:
-                                for p in self.properties_fields["notification_service_parametars"]:
-                                    if p == "id_instance":
-                                        data_to_post[p] = instance_id
-                                    if p in variables:
-                                        data_to_post[p] = variables[p]
-                            if "notification_service_next_task" in self.properties_fields:
-                                data_to_post["next_task"] = self.properties_fields["notification_service_next_task"]
-                            response = requests.post(self.properties_fields["notification_service_location"], json=data_to_post, params=params)
-                        else:
-                            pass
-                    else:
-                        print("{} not found in proces variables".format(self.properties_fields["notification_service_receiver"]))
-                        return
-                    
-                else:
-                    print("Notification receiver must be specified as notification_service_receiver")
-            else:
-                print("Supported notification_service_request_type value is POST")
-        else:
-            print("Notification service request type must be specified in properties as notification_service_request_type")
-    def run(self, variables, instance_id):
-        if "notification_service_location" in self.properties_fields:
-            self.run_notification_service(variables, self.properties_fields["notification_service_location"], instance_id)
-        return True
-            
+    def parse(self, element):
+        super(SendTask, self).parse(element)
+
+                
 @bpmn_tag("bpmn:callActivity")
 class CallActivity(Task):
     def __init__(self):
