@@ -11,7 +11,7 @@ db_connector.setup_db()
 
 #uuid4 = lambda: 2  # hardcoded for easy testing
 
-m = BpmnModel("models/test_za_call_activity.bpmn")  # hardcoded for now
+m = BpmnModel("models/diagram_1.bpmn")  # hardcoded for now
 
 async def run_with_server(app):
     app["bpmn_model"] = m
