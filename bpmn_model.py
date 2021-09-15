@@ -52,11 +52,11 @@ class BpmnModel:
                      if isinstance(t, ExclusiveGateway):
                          if t.default:
                              self.elements[t.default].default = True
-                     self.elements[t._id] = t
-                     self.process_elements[p._id][t._id] = t
                      if isinstance(t, StartEvent):
                          self.pending.append(t)
                          self.process_pending[p._id].append(t)
+                     self.elements[t._id] = t
+                     self.process_elements[p._id][t._id] = t
         #Check if there is single deployement subprocess
         for k,v in self.subprocesses.items():
             if v:
