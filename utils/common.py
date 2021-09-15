@@ -6,7 +6,7 @@ def parse_expression(expression, process_variables):
             try:
                 parsed_variable = parsed_variable[target]
             except KeyError:
-                return expression 
+                return expression
         return parsed_variable
     else:
         return expression

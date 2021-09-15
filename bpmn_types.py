@@ -37,13 +37,14 @@ class Process(BpmnObject):
 
     def parse(self, element):
         super(Process, self).parse(element)
-        #Extensions should exists only if it's Collaboration diagram
-        if element.find(".bpmn:extensionElements",NS):
-            ext = element.find(".bpmn:extensionElements",NS)
-            for p in ext.findall(".//camunda:property",NS):
-                #Find property is_main
+        # Extensions should exists only if it's Collaboration diagram
+        if element.find(".bpmn:extensionElements", NS):
+            ext = element.find(".bpmn:extensionElements", NS)
+            for p in ext.findall(".//camunda:property", NS):
+                # Find property is_main
                 if p.attrib["name"] == "is_main" and p.attrib["value"] == "True":
                     self.is_main_in_collaboration = True
+
 
 @bpmn_tag("bpmn:sequenceFlow")
 class SequenceFlow(BpmnObject):
@@ -84,27 +85,27 @@ class ManualTask(Task):
 class UserTask(Task):
     def __init__(self):
         self.form_fields = {}
-        self.documentation= ""
+        self.documentation = ""
 
     def parse(self, element):
         super(UserTask, self).parse(element)
         for f in element.findall(".//camunda:formField", NS):
             form_field_properties_dict = {}
             form_field_validations_dict = {}
-            
+
             self.form_fields[f.attrib["id"]] = {}
             self.form_fields[f.attrib["id"]]["type"] = f.attrib["type"]
             if "label" in f.attrib:
                 self.form_fields[f.attrib["id"]]["label"] = f.attrib["label"]
             else:
                 self.form_fields[f.attrib["id"]]["label"] = ""
-            
+
             for p in f.findall(".//camunda:property", NS):
                 form_field_properties_dict[p.attrib["id"]] = p.attrib["value"]
 
             for v in f.findall(".//camunda:constraint", NS):
                 form_field_validations_dict[v.attrib["name"]] = v.attrib["config"]
-            
+
             self.form_fields[f.attrib["id"]]["validation"] = form_field_validations_dict
             self.form_fields[f.attrib["id"]]["properties"] = form_field_properties_dict
 
@@ -119,7 +120,11 @@ class UserTask(Task):
 
     def get_info(self):
         info = super(UserTask, self).get_info()
-        return {**info, "form_fields": self.form_fields, "documentation":self.documentation}
+        return {
+            **info,
+            "form_fields": self.form_fields,
+            "documentation": self.documentation,
+        }
 
 
 @bpmn_tag("bpmn:serviceTask")
@@ -129,79 +134,99 @@ class ServiceTask(Task):
         self.input_variables = {}
         self.output_variables = {}
         self.connector_fields = {
-            "connector_id":"",
-            "input_variables":{},
-            "output_variables":{}
+            "connector_id": "",
+            "input_variables": {},
+            "output_variables": {},
         }
+
     def parse(self, element):
         super(ServiceTask, self).parse(element)
         for ee in element.findall(".//bpmn:extensionElements", NS):
-            #Find direct children inputOutput, Input/Output tab in Camunda
-            self._parse_input_output_variables(ee, self.input_variables, self.output_variables)
-            #Find connector data, Connector tab in Camunda
+            # Find direct children inputOutput, Input/Output tab in Camunda
+            self._parse_input_output_variables(
+                ee, self.input_variables, self.output_variables
+            )
+            # Find connector data, Connector tab in Camunda
             for con in ee.findall(".camunda:connector", NS):
-                self._parse_input_output_variables(con, self.connector_fields["input_variables"], self.connector_fields["output_variables"])
-                self.connector_fields["connector_id"] = con.find("camunda:connectorId",NS).text
-   
+                self._parse_input_output_variables(
+                    con,
+                    self.connector_fields["input_variables"],
+                    self.connector_fields["output_variables"],
+                )
+                self.connector_fields["connector_id"] = con.find(
+                    "camunda:connectorId", NS
+                ).text
+
     def _parse_input_output_variables(self, element, input_dict, output_dict):
-        for io in element.findall(".camunda:inputOutput",NS):
-            for inparam in io.findall(".camunda:inputParameter",NS):
+        for io in element.findall(".camunda:inputOutput", NS):
+            for inparam in io.findall(".camunda:inputParameter", NS):
                 self.parse_input_output_parameters(inparam, input_dict)
-            for outparam in io.findall(".camunda:outputParameter",NS):
+            for outparam in io.findall(".camunda:outputParameter", NS):
                 self.parse_input_output_parameters(outparam, output_dict)
-    
+
     def _parse_input_output_parameters(self, element, dictionary):
-        if element.findall(".camunda:list",NS):
+        if element.findall(".camunda:list", NS):
             helper_list = []
-            for lv in element.find("camunda:list",NS):
+            for lv in element.find("camunda:list", NS):
                 helper_list.append(lv.text) if lv.text else ""
             dictionary[element.attrib["name"]] = helper_list
-        elif element.findall(".camunda:map",NS):
+        elif element.findall(".camunda:map", NS):
             helper_dict = {}
-            for mv in element.find("camunda:map",NS):
+            for mv in element.find("camunda:map", NS):
                 helper_dict[mv.attrib["key"]] = mv.text
             dictionary[element.attrib["name"]] = helper_dict
-        elif element.findall(".camunda:script",NS):
-            #script not supported
+        elif element.findall(".camunda:script", NS):
+            # script not supported
             pass
         else:
             dictionary[element.attrib["name"]] = element.text if element.text else ""
-            
 
     def run_connector(self, variables, instance_id):
-        #Check for URL parameters
+        # Check for URL parameters
         parameters = {}
         if self.connector_fields["input_variables"].get("url_parameter"):
-            for key, value in self.connector_fields["input_variables"]["url_parameter"].items():
-                #Parse expression and add to parameters
+            for key, value in self.connector_fields["input_variables"][
+                "url_parameter"
+            ].items():
+                # Parse expression and add to parameters
                 parameters[key] = parse_expression(value, variables)
 
-        #JSON data for API
+        # JSON data for API
         data = {}
         for key, value in self.input_variables.items():
-            #Parse expression if it exists 
+            # Parse expression if it exists
             if isinstance(value, str):
                 value = parse_expression(value, variables)
             elif isinstance(value, list):
-                for i,v in enumerate(value):
+                for i, v in enumerate(value):
                     value[i] = parse_expression(v, variables)
             elif isinstance(value, dict):
-                for k,v in value.items():
+                for k, v in value.items():
                     value[k] = parse_expression(v, variables)
-            #Special case for instance id
+            # Special case for instance id
             if key == "id_instance":
                 value = instance_id
-            #Add parsed value to data
+            # Add parsed value to data
             data[key] = value
-        #Check method and make request
+        # Check method and make request
         if self.connector_fields["input_variables"].get("method"):
             if self.connector_fields["input_variables"]["method"] == "GET":
-                response = requests.get(self.connector_fields["input_variables"]["url"], params=parameters, json=data)
+                response = requests.get(
+                    self.connector_fields["input_variables"]["url"],
+                    params=parameters,
+                    json=data,
+                )
             elif self.connector_fields["input_variables"]["method"] == "POST":
-                response = requests.post(self.connector_fields["input_variables"]["url"], params=parameters, json=data)
+                response = requests.post(
+                    self.connector_fields["input_variables"]["url"],
+                    params=parameters,
+                    json=data,
+                )
             elif self.connector_fields["input_variables"]["method"] == "PATCH":
-                response = requests.patch(self.properties_fields["db_location"], params=parameters, json=data)
-        #Check for output variables
+                response = requests.patch(
+                    self.properties_fields["db_location"], params=parameters, json=data
+                )
+        # Check for output variables
         if self.output_variables:
             for key in self.output_variables:
                 for r in response.json():
@@ -213,30 +238,39 @@ class ServiceTask(Task):
             self.run_connector(variables, instance_id)
         return True
 
+
 @bpmn_tag("bpmn:sendTask")
 class SendTask(ServiceTask):
     def parse(self, element):
         super(SendTask, self).parse(element)
 
-                
+
 @bpmn_tag("bpmn:callActivity")
 class CallActivity(Task):
     def __init__(self):
         self.deployment = False
         self.called_element = ""
+
     def parse(self, element):
         super(CallActivity, self).parse(element)
         if element.attrib.get("calledElement"):
             self.called_element = element.attrib["calledElement"]
-        if element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding") and element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding") == "deployment":
-            self.deployment = True 
+        if (
+            element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding")
+            and element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding")
+            == "deployment"
+        ):
+            self.deployment = True
+
 
 @bpmn_tag("bpmn:businessRule")
 class BusinessRule(ServiceTask):
     def __init__(self):
         self.decision_ref = None
+
     def parse(self, element):
         super(BusinessRule, self).parse(element)
+
 
 @bpmn_tag("bpmn:event")
 class Event(BpmnObject):
@@ -281,4 +315,3 @@ class ExclusiveGateway(Gateway):
             element.attrib["default"] if "default" in element.attrib else None
         )
         super(ExclusiveGateway, self).parse(element)
-

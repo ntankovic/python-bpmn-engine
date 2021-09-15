@@ -6,12 +6,13 @@ from bpmn_model import BpmnModel, UserFormMessage
 import aiohttp_cors
 import db_connector
 
-#Setup database
+# Setup database
 db_connector.setup_db()
 
-#uuid4 = lambda: 2  # hardcoded for easy testing
+# uuid4 = lambda: 2  # hardcoded for easy testing
 
 m = BpmnModel("models/diagram_1.bpmn")  # hardcoded for now
+
 
 async def run_with_server(app):
     app["bpmn_model"] = m
@@ -21,6 +22,7 @@ async def run_with_server(app):
             instance = await app["bpmn_model"].create_instance(key, {})
             instance = await instance.run_from_log(l[key]["events"])
             asyncio.create_task(instance.run())
+
 
 async def handle_new_instance(request):
     _id = str(uuid4())
@@ -68,14 +70,17 @@ app.add_routes([web.post("/instance/{instance_id}/task/{task_id}/form", handle_f
 app.add_routes([web.get("/instance/{instance_id}/task/{task_id}", handle_task_info)])
 app.add_routes([web.get("/instance/{instance_id}", handle_instance_info)])
 
-cors = aiohttp_cors.setup(app, defaults={
-    "*": aiohttp_cors.ResourceOptions(
-        allow_credentials=True,
-        expose_headers="*",
-        allow_headers="*",
-        allow_methods="*"
-    )
-})
+cors = aiohttp_cors.setup(
+    app,
+    defaults={
+        "*": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*",
+            allow_methods="*",
+        )
+    },
+)
 
 for route in list(app.router.routes()):
     cors.add(route)
