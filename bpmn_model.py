@@ -37,28 +37,28 @@ class BpmnModel:
             p = BPMN_MAPPINGS["bpmn:process"]()
             p.parse(process)
             self.process_elements[p._id] = {}
-            #Check for Collaboration
-            if len(processes)>1 and p.is_main_in_collaboration:
+            # Check for Collaboration
+            if len(processes) > 1 and p.is_main_in_collaboration:
                 self.main_collaboration_process = p._id
-            #Parse all elements in the process
+            # Parse all elements in the process
             for tag, _type in BPMN_MAPPINGS.items():
                 for e in process.findall(f"{tag}", NS):
-                     t = _type()
-                     t.parse(e)
-                     if isinstance(t, CallActivity):
-                         self.subprocesses[t.called_element] = t.deployment
-                     if isinstance(t, SequenceFlow):
-                         self.flow[t.source].append(t)
-                     if isinstance(t, ExclusiveGateway):
-                         if t.default:
-                             self.elements[t.default].default = True
-                     if isinstance(t, StartEvent):
-                         self.pending.append(t)
-                         self.process_pending[p._id].append(t)
-                     self.elements[t._id] = t
-                     self.process_elements[p._id][t._id] = t
-        #Check if there is single deployement subprocess
-        for k,v in self.subprocesses.items():
+                    t = _type()
+                    t.parse(e)
+                    if isinstance(t, CallActivity):
+                        self.subprocesses[t.called_element] = t.deployment
+                    if isinstance(t, SequenceFlow):
+                        self.flow[t.source].append(t)
+                    if isinstance(t, ExclusiveGateway):
+                        if t.default:
+                            self.elements[t.default].default = True
+                    if isinstance(t, StartEvent):
+                        self.pending.append(t)
+                        self.process_pending[p._id].append(t)
+                    self.elements[t._id] = t
+                    self.process_elements[p._id][t._id] = t
+        # Check if there is single deployement subprocess
+        for k, v in self.subprocesses.items():
             if v:
                 self.handle_deployment_subprocesses()
                 break
@@ -67,26 +67,28 @@ class BpmnModel:
         queue = asyncio.Queue()
         if not process:
             if self.main_collaboration_process:
-                #If Collaboration diagram
+                # If Collaboration diagram
                 process = self.main_collaboration_process
             else:
-                #If Process diagram
+                # If Process diagram
                 process = list(self.process_elements)[0]
-        instance = BpmnInstance(_id, model=self, variables=variables, in_queue=queue, process=process)
+        instance = BpmnInstance(
+            _id, model=self, variables=variables, in_queue=queue, process=process
+        )
         self.instances[_id] = instance
         return instance
-    
-    #Takes model_path needed for deployed subprocess
+
+    # Takes model_path needed for deployed subprocess
     def handle_deployment_subprocesses(self):
         models_directory = self.model_path.split("/")[:-1]
         models_directory = "/".join(models_directory) + "/"
-        
+
         other_models_list = []
-        
+
         for m in os.listdir(models_directory):
-            if models_directory+m == self.model_path:
+            if models_directory + m == self.model_path:
                 continue
-            other_model = BpmnModel(models_directory+m)
+            other_model = BpmnModel(models_directory + m)
             other_models_list.append(other_model)
         for other_model in other_models_list:
             for subprocess_key in self.subprocesses.keys():
@@ -104,7 +106,7 @@ class BpmnInstance:
         self.state = "initialized"
         self.pending = deepcopy(self.model.process_pending[process])
         self.process = process
-        
+
     def get_info(self):
         return {
             "state": self.state,
@@ -138,27 +140,31 @@ class BpmnInstance:
     async def run_subprocess(self, process_id):
         new_subproces_instance_id = str(uuid4())
         if not self.model.subprocesses[process_id]:
-            new_subprocess_instance = await self.model.create_instance(new_subproces_instance_id, {}, process_id)
+            new_subprocess_instance = await self.model.create_instance(
+                new_subproces_instance_id, {}, process_id
+            )
             finished_subprocess = await new_subprocess_instance.run()
         else:
             subprocess_model = BpmnModel(self.model.subprocesses[process_id])
-            new_subproces_instance = await subprocess_model.create_instance(new_subproces_instance_id, {}, process_id)
+            new_subproces_instance = await subprocess_model.create_instance(
+                new_subproces_instance_id, {}, process_id
+            )
             finished_subprocess = await new_subproces_instance.run()
         return True
-    
+
     async def run(self):
-        
+
         self.state = "running"
         _id = self._id
         prefix = f"\t[{_id}]"
         log = partial(print, prefix)  # if _id == "2" else lambda *x: x
 
         in_queue = self.in_queue
-        #Take only elements of running process
+        # Take only elements of running process
         elements = deepcopy(self.model.process_elements[self.process])
         flow = deepcopy(self.model.flow)
         queue = deque()
-        
+
         while len(self.pending) > 0:
 
             # process incoming messages
@@ -173,25 +179,35 @@ class BpmnInstance:
             if message:
                 log("--> msg in:", message and message.task_id)
 
-            #Helper current dictionary
+            # Helper current dictionary
             current_and_variables_dict = {}
 
             for idx, current in enumerate(self.pending):
-                #Helper variables dict
+                # Helper variables dict
                 before_variables = deepcopy(self.variables)
 
                 if isinstance(current, StartEvent):
-                    #Helper variables for DB insert
-                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    # Helper variables for DB insert
+                    new_variables = {
+                        k: self.variables[k]
+                        for k in set(self.variables) - set(before_variables)
+                    }
                     current_and_variables_dict[current._id] = new_variables
-                    #Create new running instance
+                    # Create new running instance
                     db_connector.add_running_instance(instance_id=self._id)
 
                 if isinstance(current, EndEvent):
                     exit = True
                     del self.pending[idx]
-                    #Add EndEvent to DB
-                    db_connector.add_event(model_name = self.model.model_path, instance_id = self._id, activity_id = current._id, timestamp = datetime.now(), pending = [], activity_variables={})
+                    # Add EndEvent to DB
+                    db_connector.add_event(
+                        model_name=self.model.model_path,
+                        instance_id=self._id,
+                        activity_id=current._id,
+                        timestamp=datetime.now(),
+                        pending=[],
+                        activity_variables={},
+                    )
                     break
 
                 if isinstance(current, UserTask):
@@ -206,40 +222,54 @@ class BpmnInstance:
                         if user_action:
                             log("\t- user sent:", user_action)
                         can_continue = current.run(self.variables, user_action)
-                        #Helper variables for DB insert
-                        new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                        # Helper variables for DB insert
+                        new_variables = {
+                            k: self.variables[k]
+                            for k in set(self.variables) - set(before_variables)
+                        }
                         current_and_variables_dict[current._id] = new_variables
 
                 elif isinstance(current, ServiceTask):
                     log("DOING:", current)
                     can_continue = current.run(self.variables, _id)
-                    #Helper variables for DB insert
-                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    # Helper variables for DB insert
+                    new_variables = {
+                        k: self.variables[k]
+                        for k in set(self.variables) - set(before_variables)
+                    }
                     current_and_variables_dict[current._id] = new_variables
 
                 elif isinstance(current, SendTask):
                     log("DOING:", current)
                     can_continue = current.run(self.variables, _id)
-                    #Helper variables for DB insert
-                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    # Helper variables for DB insert
+                    new_variables = {
+                        k: self.variables[k]
+                        for k in set(self.variables) - set(before_variables)
+                    }
                     current_and_variables_dict[current._id] = new_variables
 
                 elif isinstance(current, CallActivity):
-                    #TODO implement Variables tab CallActivity
-                    log("DOING:",current)
+                    # TODO implement Variables tab CallActivity
+                    log("DOING:", current)
                     can_continue = await self.run_subprocess(current.called_element)
-                    #Helper variables for DB insert
-                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    # Helper variables for DB insert
+                    new_variables = {
+                        k: self.variables[k]
+                        for k in set(self.variables) - set(before_variables)
+                    }
                     current_and_variables_dict[current._id] = new_variables
 
                 else:
                     if isinstance(current, Task):
                         log("DOING:", current)
                     can_continue = current.run()
-                    #Helper variables for DB insert
-                    new_variables = {k : self.variables[k] for k in set(self.variables) - set(before_variables)}
+                    # Helper variables for DB insert
+                    new_variables = {
+                        k: self.variables[k]
+                        for k in set(self.variables) - set(before_variables)
+                    }
                     current_and_variables_dict[current._id] = new_variables
-
 
                 if can_continue:
                     del self.pending[idx]
@@ -281,15 +311,22 @@ class BpmnInstance:
             else:
                 log("Waiting for user...", self.pending)
                 queue.append(await in_queue.get())
-            
-            #Insert finished events into DB
+
+            # Insert finished events into DB
             for c in current_and_variables_dict:
-                #Add each current into DB
-                db_connector.add_event(model_name= self.model.model_path, instance_id=self._id, activity_id=c, timestamp=datetime.now(), pending = [pending._id for pending in self.pending], activity_variables=current_and_variables_dict[c])
-           
+                # Add each current into DB
+                db_connector.add_event(
+                    model_name=self.model.model_path,
+                    instance_id=self._id,
+                    activity_id=c,
+                    timestamp=datetime.now(),
+                    pending=[pending._id for pending in self.pending],
+                    activity_variables=current_and_variables_dict[c],
+                )
+
         log("DONE")
         self.state = "finished"
         self.pending = []
-        #Running instance finished
+        # Running instance finished
         db_connector.finish_running_instance(self._id)
         return self.variables

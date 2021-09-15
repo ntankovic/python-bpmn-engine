@@ -4,6 +4,7 @@ import os
 
 DB = Database()
 
+
 class Event(DB.Entity):
     model_name = Required(str)
     instance_id = Required(str)
@@ -12,39 +13,54 @@ class Event(DB.Entity):
     pending = Required(StrArray)
     activity_variables = Required(Json)
 
+
 class RunningInstance(DB.Entity):
     running = Required(bool)
     instance_id = Required(str, unique=True)
 
 
-
 def setup_db():
     if not os.path.isdir("database"):
         os.mkdir("database")
-    DB.bind(provider = "sqlite", filename="database/database.sqlite", create_db=True)
+    DB.bind(provider="sqlite", filename="database/database.sqlite", create_db=True)
     DB.generate_mapping(create_tables=True)
 
+
 @db_session
-def add_event(model_name, instance_id, activity_id, timestamp, pending, activity_variables):
-    Event(model_name=model_name,instance_id=instance_id,activity_id=activity_id,timestamp=timestamp,pending=pending,activity_variables=activity_variables)
+def add_event(
+    model_name, instance_id, activity_id, timestamp, pending, activity_variables
+):
+    Event(
+        model_name=model_name,
+        instance_id=instance_id,
+        activity_id=activity_id,
+        timestamp=timestamp,
+        pending=pending,
+        activity_variables=activity_variables,
+    )
+
 
 @db_session
 def add_running_instance(instance_id):
     RunningInstance(instance_id=instance_id, running=True)
-    
+
+
 @db_session
 def finish_running_instance(instance):
     finished_instance = RunningInstance.get(instance_id=instance)
     finished_instance.running = False
 
+
 @db_session
 def get_running_instances_log():
     log = []
-    running_instances = RunningInstance.select(lambda ri: ri.running==True)[:]
+    running_instances = RunningInstance.select(lambda ri: ri.running == True)[:]
     for instance in running_instances:
         instance_dict = {}
-        instance_dict[instance.instance_id]= {}
-        events = Event.select(lambda e: e.instance_id == instance.instance_id).order_by(Event.timestamp)[:]
+        instance_dict[instance.instance_id] = {}
+        events = Event.select(lambda e: e.instance_id == instance.instance_id).order_by(
+            Event.timestamp
+        )[:]
         events_list = []
         for event in events:
             model_path = event.model_name
@@ -53,7 +69,7 @@ def get_running_instances_log():
             event_dict["pending"] = event.pending
             event_dict["activity_variables"] = event.activity_variables
             events_list.append(event_dict)
-        
+
         instance_dict[instance.instance_id]["model_path"] = model_path
         instance_dict[instance.instance_id]["events"] = events_list
         log.append(instance_dict)
