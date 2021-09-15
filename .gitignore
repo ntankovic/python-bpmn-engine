@@ -5,5 +5,7 @@ models/chatbot_model.bpmn
 models/test_podproces.bpmn
 models/test_call_activity.bpmn
 models/test_business_rule.bpmn
+models/test_dmn.dmn
+models/test_exe_dmn.dmn
 py-bpmn-env
 database/
