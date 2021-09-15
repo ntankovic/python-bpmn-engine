@@ -27,7 +27,7 @@
 ### Call Activity
 - CallActivity Type **must** be BPMN
 - Called Element **must** be *process_id* of process you wish to start
-- Binding **must** be **deployment** if you wish to call process from other BPMN diagram, other bindings assumes that called process is inside the same diagraas Call Activity
+- Binding **must** be **deployment** if you wish to call process from other BPMN diagram, other bindings assumes that called process is inside the same diagrams Call Activity
 
 ### Gateways (Exclusive, Parallel)
 
