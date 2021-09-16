@@ -226,6 +226,7 @@ class ServiceTask(Task):
                 response = requests.patch(
                     self.properties_fields["db_location"], params=parameters, json=data
                 )
+
         if response.status_code not in (200, 201):
             raise Exception(response.text)
         # Check for output variables
