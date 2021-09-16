@@ -1,5 +1,6 @@
 from pony.orm import *
 from datetime import datetime
+import env
 import os
 
 DB = Database()
@@ -22,7 +23,10 @@ class RunningInstance(DB.Entity):
 def setup_db():
     if not os.path.isdir("database"):
         os.mkdir("database")
-    DB.bind(provider="sqlite", filename="database/database.sqlite", create_db=True)
+    if env.DB["provider"] == "postgres":
+        DB.bind(**env.DB)
+    else:
+        DB.bind(provider="sqlite", filename="database/database.sqlite", create_db=True)
     DB.generate_mapping(create_tables=True)
 
 

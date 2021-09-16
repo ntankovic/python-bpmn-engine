@@ -1,4 +1,5 @@
 import requests
+import env
 from utils.common import parse_expression
 
 NS = {
@@ -160,9 +161,9 @@ class ServiceTask(Task):
     def _parse_input_output_variables(self, element, input_dict, output_dict):
         for io in element.findall(".camunda:inputOutput", NS):
             for inparam in io.findall(".camunda:inputParameter", NS):
-                self.parse_input_output_parameters(inparam, input_dict)
+                self._parse_input_output_parameters(inparam, input_dict)
             for outparam in io.findall(".camunda:outputParameter", NS):
-                self.parse_input_output_parameters(outparam, output_dict)
+                self._parse_input_output_parameters(outparam, output_dict)
 
     def _parse_input_output_parameters(self, element, dictionary):
         if element.findall(".camunda:list", NS):
@@ -208,6 +209,9 @@ class ServiceTask(Task):
                 value = instance_id
             # Add parsed value to data
             data[key] = value
+        # system vars
+        data = {**data, **env.SYSTEM_VARS}
+
         # Check method and make request
         if self.connector_fields["input_variables"].get("method"):
             if self.connector_fields["input_variables"]["method"] == "GET":
@@ -224,14 +228,20 @@ class ServiceTask(Task):
                 )
             elif self.connector_fields["input_variables"]["method"] == "PATCH":
                 response = requests.patch(
-                    self.properties_fields["db_location"], params=parameters, json=data
+                    self.connector_fields["input_variables"]["url"],
+                    params=parameters,
+                    json=data,
                 )
+
+        if response.status_code not in (200, 201):
+            raise Exception(response.text)
+
         # Check for output variables
         if self.output_variables:
+            r = response.json()
             for key in self.output_variables:
-                for r in response.json():
-                    if key in r:
-                        variables[key] = r[key]
+                if key in r:
+                    variables[key] = r[key]
 
     def run(self, variables, instance_id):
         if self.connector_fields["connector_id"] == "http-connector":
