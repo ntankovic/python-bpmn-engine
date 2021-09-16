@@ -8,6 +8,7 @@ import db_connector
 
 # Setup database
 db_connector.setup_db()
+routes = web.RouteTableDef()
 
 # uuid4 = lambda: 2  # hardcoded for easy testing
 
@@ -24,6 +25,7 @@ async def run_with_server(app):
             asyncio.create_task(instance.run())
 
 
+@routes.post("/instance")
 async def handle_new_instance(request):
     _id = str(uuid4())
     instance = await app["bpmn_model"].create_instance(_id, {})
@@ -31,6 +33,7 @@ async def handle_new_instance(request):
     return web.json_response({"id": _id})
 
 
+@routes.post("/instance/{instance_id}/task/{task_id}/form")
 async def handle_form(request):
     post = await request.json()
     instance_id = request.match_info.get("instance_id")
@@ -42,6 +45,7 @@ async def handle_form(request):
     return web.json_response({"status": "OK"})
 
 
+@routes.get("/instance/{instance_id}/task/{task_id}")
 async def handle_task_info(request):
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
@@ -54,6 +58,7 @@ async def handle_task_info(request):
     return web.json_response(task.get_info())
 
 
+@routes.get("/instance/{instance_id}")
 async def handle_instance_info(request):
     instance_id = request.match_info.get("instance_id")
     if instance_id not in app["bpmn_model"].instances:
@@ -63,26 +68,37 @@ async def handle_instance_info(request):
     return web.json_response(instance.get_info())
 
 
-app = web.Application()
-app.on_startup.append(run_with_server)
-app.add_routes([web.post("/instance", handle_new_instance)])
-app.add_routes([web.post("/instance/{instance_id}/task/{task_id}/form", handle_form)])
-app.add_routes([web.get("/instance/{instance_id}/task/{task_id}", handle_task_info)])
-app.add_routes([web.get("/instance/{instance_id}", handle_instance_info)])
+app = None
 
-cors = aiohttp_cors.setup(
-    app,
-    defaults={
-        "*": aiohttp_cors.ResourceOptions(
-            allow_credentials=True,
-            expose_headers="*",
-            allow_headers="*",
-            allow_methods="*",
-        )
-    },
-)
 
-for route in list(app.router.routes()):
-    cors.add(route)
+def run():
+    global app
+    app = web.Application()
+    app.on_startup.append(run_with_server)
+    app.add_routes(routes)
 
-web.run_app(app)
+    cors = aiohttp_cors.setup(
+        app,
+        defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+                allow_methods="*",
+            )
+        },
+    )
+
+    for route in list(app.router.routes()):
+        cors.add(route)
+
+    return app
+
+
+async def serve():
+    return run()
+
+
+if __name__ == "__main__":
+    app = run()
+    web.run_app(app)
