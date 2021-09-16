@@ -226,12 +226,15 @@ class ServiceTask(Task):
                 response = requests.patch(
                     self.properties_fields["db_location"], params=parameters, json=data
                 )
+
+        if response.status_code not in (200, 201):
+            raise Exception(response.text)
         # Check for output variables
         if self.output_variables:
+            r = response.json()
             for key in self.output_variables:
-                for r in response.json():
-                    if key in r:
-                        variables[key] = r[key]
+                if key in r:
+                    variables[key] = r[key]
 
     def run(self, variables, instance_id):
         if self.connector_fields["connector_id"] == "http-connector":
