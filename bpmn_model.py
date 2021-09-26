@@ -1,4 +1,3 @@
-from asyncio import queues
 import xml.etree.ElementTree as ET
 from bpmn_types import *
 from pprint import pprint
@@ -10,6 +9,7 @@ import db_connector
 from datetime import datetime
 import os
 from uuid import uuid4
+import json
 
 
 class UserFormMessage:
@@ -29,8 +29,9 @@ class BpmnModel:
         self.main_collaboration_process = None
         self.model_path = model_path
         self.subprocesses = {}
+        self.main_process_name = None
 
-        model_tree = ET.parse(self.model_path)
+        model_tree = ET.parse(os.path.join("models", self.model_path))
         model_root = model_tree.getroot()
         processes = model_root.findall("bpmn:process", NS)
         for process in processes:
@@ -40,6 +41,9 @@ class BpmnModel:
             # Check for Collaboration
             if len(processes) > 1 and p.is_main_in_collaboration:
                 self.main_collaboration_process = p._id
+                self.main_process_name = p.name
+            else:
+                self.main_process_name = p.name
             # Parse all elements in the process
             for tag, _type in BPMN_MAPPINGS.items():
                 for e in process.findall(f"{tag}", NS):
@@ -62,6 +66,12 @@ class BpmnModel:
             if v:
                 self.handle_deployment_subprocesses()
                 break
+
+    def to_json(self):
+        return {
+            "model_path": self.model_path,
+            "main_process_name": self.main_process_name,
+        }
 
     async def create_instance(self, _id, variables, process=None):
         queue = asyncio.Queue()
@@ -107,11 +117,12 @@ class BpmnInstance:
         self.pending = deepcopy(self.model.process_pending[process])
         self.process = process
 
-    def get_info(self):
+    def to_json(self):
         return {
-            "state": self.state,
-            "variables": self.variables,
             "id": self._id,
+            "variables": self.variables,
+            "state": self.state,
+            "model": self.model.to_json(),
             "pending": [x._id for x in self.pending],
         }
 

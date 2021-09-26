@@ -35,10 +35,12 @@ class BpmnObject(object):
 class Process(BpmnObject):
     def __init__(self):
         self.is_main_in_collaboration = None
+        self.name = None
 
     def parse(self, element):
         super(Process, self).parse(element)
         # Extensions should exists only if it's Collaboration diagram
+        self.name = element.attrib["name"]
         if element.find(".bpmn:extensionElements", NS):
             ext = element.find(".bpmn:extensionElements", NS)
             for p in ext.findall(".//camunda:property", NS):
