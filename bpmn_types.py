@@ -1,4 +1,5 @@
 import requests
+import os
 import env
 from utils.common import parse_expression
 
@@ -104,7 +105,9 @@ class UserTask(Task):
                 self.form_fields[f.attrib["id"]]["label"] = ""
 
             for p in f.findall(".//camunda:property", NS):
-                form_field_properties_dict[p.attrib["id"]] = p.attrib["value"]
+                form_field_properties_dict[p.attrib["id"]] = parse_expression(
+                    p.attrib["value"], env.SYSTEM_VARS | env.DS
+                )
 
             for v in f.findall(".//camunda:constraint", NS):
                 form_field_validations_dict[v.attrib["name"]] = v.attrib["config"]
@@ -144,6 +147,13 @@ class ServiceTask(Task):
 
     def parse(self, element):
         super(ServiceTask, self).parse(element)
+
+        datasources = {}
+        try:
+            datasources = env.DS
+        except Exception:
+            print("No DS in env.py")
+
         for ee in element.findall(".//bpmn:extensionElements", NS):
             # Find direct children inputOutput, Input/Output tab in Camunda
             self._parse_input_output_variables(
@@ -156,9 +166,11 @@ class ServiceTask(Task):
                     self.connector_fields["input_variables"],
                     self.connector_fields["output_variables"],
                 )
-                self.connector_fields["connector_id"] = con.find(
-                    "camunda:connectorId", NS
-                ).text
+                connector_id = con.find("camunda:connectorId", NS).text
+                if connector_id in datasources:
+                    ds = datasources[connector_id]
+                    self.connector_fields["connector_id"] = ds["type"]
+                    self.connector_fields["input_variables"]["base_url"] = ds["url"]
 
     def _parse_input_output_variables(self, element, input_dict, output_dict):
         for io in element.findall(".camunda:inputOutput", NS):
@@ -184,7 +196,7 @@ class ServiceTask(Task):
         else:
             dictionary[element.attrib["name"]] = element.text if element.text else ""
 
-    def run_connector(self, variables, instance_id):
+    async def run_connector(self, variables, instance_id):
         # Check for URL parameters
         parameters = {}
         if self.connector_fields["input_variables"].get("url_parameter"):
@@ -201,8 +213,7 @@ class ServiceTask(Task):
             if isinstance(value, str):
                 value = parse_expression(value, variables)
             elif isinstance(value, list):
-                for i, v in enumerate(value):
-                    value[i] = parse_expression(v, variables)
+                value = [parse_expression(v, variables) for v in value]
             elif isinstance(value, dict):
                 for k, v in value.items():
                     value[k] = parse_expression(v, variables)
@@ -214,26 +225,25 @@ class ServiceTask(Task):
         # system vars
         data = {**data, **env.SYSTEM_VARS}
 
+        url = os.path.join(
+            self.connector_fields["input_variables"].get("base_url", ""),
+            self.connector_fields["input_variables"]["url"].lstrip("/"),
+        )
+
         # Check method and make request
-        if self.connector_fields["input_variables"].get("method"):
-            if self.connector_fields["input_variables"]["method"] == "GET":
-                response = requests.get(
-                    self.connector_fields["input_variables"]["url"],
-                    params=parameters,
-                    json=data,
-                )
-            elif self.connector_fields["input_variables"]["method"] == "POST":
-                response = requests.post(
-                    self.connector_fields["input_variables"]["url"],
-                    params=parameters,
-                    json=data,
-                )
-            elif self.connector_fields["input_variables"]["method"] == "PATCH":
-                response = requests.patch(
-                    self.connector_fields["input_variables"]["url"],
-                    params=parameters,
-                    json=data,
-                )
+        if method := self.connector_fields["input_variables"].get("method"):
+            if method == "POST":
+                call_function = requests.post
+            elif method == "PATCH":
+                call_function = requests.patch
+            else:
+                call_function = requests.get
+
+            response = call_function(
+                url,
+                params=parameters,
+                json=data,
+            )
 
         if response.status_code not in (200, 201):
             raise Exception(response.text)
@@ -245,9 +255,9 @@ class ServiceTask(Task):
                 if key in r:
                     variables[key] = r[key]
 
-    def run(self, variables, instance_id):
+    async def run(self, variables, instance_id):
         if self.connector_fields["connector_id"] == "http-connector":
-            self.run_connector(variables, instance_id)
+            await self.run_connector(variables, instance_id)
         return True
 
 

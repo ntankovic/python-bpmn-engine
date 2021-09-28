@@ -242,7 +242,7 @@ class BpmnInstance:
 
                 elif isinstance(current, ServiceTask):
                     log("DOING:", current)
-                    can_continue = current.run(self.variables, _id)
+                    can_continue = await current.run(self.variables, _id)
                     # Helper variables for DB insert
                     new_variables = {
                         k: self.variables[k]

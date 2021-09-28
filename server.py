@@ -111,7 +111,6 @@ async def handle_task_info(request):
         raise aiohttp.web.HTTPNotFound
     instance = app["bpmn_model"].instances[instance_id]
     task = instance.model.elements[task_id]
-    print(task.get_info())
 
     return web.json_response(task.get_info())
 
