@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import xml.etree.ElementTree as ET
 from bpmn_types import *
 from pprint import pprint
@@ -9,7 +10,13 @@ import db_connector
 from datetime import datetime
 import os
 from uuid import uuid4
-import json
+import env
+
+instance_models = {}
+
+
+def get_model_for_instance(iid):
+    return instance_models.get(iid, None)
 
 
 class UserFormMessage:
@@ -29,7 +36,7 @@ class BpmnModel:
         self.main_collaboration_process = None
         self.model_path = model_path
         self.subprocesses = {}
-        self.main_process_name = None
+        self.main_process = SimpleNamespace()
 
         model_tree = ET.parse(os.path.join("models", self.model_path))
         model_root = model_tree.getroot()
@@ -41,9 +48,11 @@ class BpmnModel:
             # Check for Collaboration
             if len(processes) > 1 and p.is_main_in_collaboration:
                 self.main_collaboration_process = p._id
-                self.main_process_name = p.name
+                self.main_process.name = p.name
+                self.main_process.id = p._id
             else:
-                self.main_process_name = p.name
+                self.main_process.name = p.name
+                self.main_process.id = p._id
             # Parse all elements in the process
             for tag, _type in BPMN_MAPPINGS.items():
                 for e in process.findall(f"{tag}", NS):
@@ -70,7 +79,10 @@ class BpmnModel:
     def to_json(self):
         return {
             "model_path": self.model_path,
-            "main_process_name": self.main_process_name,
+            "main_process_name": self.main_process.name,
+            "tasks": [
+                x.to_json() for x in self.elements.values() if isinstance(x, UserTask)
+            ],
         }
 
     async def create_instance(self, _id, variables, process=None):
@@ -109,6 +121,7 @@ class BpmnModel:
 
 class BpmnInstance:
     def __init__(self, _id, model, variables, in_queue, process):
+        instance_models[_id] = model
         self._id = _id
         self.model = model
         self.variables = deepcopy(variables)
@@ -124,6 +137,7 @@ class BpmnInstance:
             "state": self.state,
             "model": self.model.to_json(),
             "pending": [x._id for x in self.pending],
+            "env": env.SYSTEM_VARS,
         }
 
     @classmethod

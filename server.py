@@ -3,7 +3,7 @@ import os
 from aiohttp import web
 from uuid import uuid4
 import asyncio
-from bpmn_model import BpmnModel, UserFormMessage
+from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance
 import aiohttp_cors
 import db_connector
 from functools import reduce
@@ -14,23 +14,31 @@ routes = web.RouteTableDef()
 
 # uuid4 = lambda: 2  # hardcoded for easy testing
 
-m = BpmnModel("strucna_praksa.bpmn")  # hardcoded for now
+models = {}
+for file in os.listdir("models"):
+    if file.endswith(".bpmn"):
+        m = BpmnModel(file)
+        models[file] = m
 
 
-async def run_with_server(app):
-    app["bpmn_model"] = m
+async def run_as_server(app):
+    app["bpmn_models"] = models
     log = db_connector.get_running_instances_log()
     for l in log:
-        for key in l:
-            instance = await app["bpmn_model"].create_instance(key, {})
-            instance = await instance.run_from_log(l[key]["events"])
+        for key, data in l.items():
+            instance = await app["bpmn_models"][data["model_path"]].create_instance(
+                key, {}
+            )
+            instance = await instance.run_from_log(data["events"])
             asyncio.create_task(instance.run())
 
 
-@routes.get("/model")
+@routes.get("/model/{model_name}")
 async def get_model(request):
-    # model_id = request.match_info.get("model_id")
-    return web.FileResponse(path=os.path.join("models", app["bpmn_model"].model_path))
+    model_name = request.match_info.get("model_name")
+    return web.FileResponse(
+        path=os.path.join("models", app["bpmn_models"][model_name].model_path)
+    )
 
 
 @routes.post("/instance")
@@ -46,9 +54,8 @@ async def handle_form(request):
     post = await request.json()
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
-    app["bpmn_model"].instances[instance_id].in_queue.put_nowait(
-        UserFormMessage(task_id, post)
-    )
+    m = get_model_for_instance(instance_id)
+    m.instances[instance_id].in_queue.put_nowait(UserFormMessage(task_id, post))
 
     return web.json_response({"status": "OK"})
 
@@ -76,29 +83,30 @@ async def search_instance(request):
     result_ids = []
     for (att, value) in queries:
         ids = []
-        for _id, instance in app["bpmn_model"].instances.items():
-            search_atts = []
-            if not att:
-                search_atts = list(instance.variables.keys())
-            else:
-                for key in instance.variables.keys():
-                    if not att or att in key.lower():
-                        search_atts.append(key)
-            search_atts = filter(
-                lambda x: isinstance(instance.variables[x], str), search_atts
-            )
+        for m in models.values():
+            for _id, instance in m.instances.items():
+                search_atts = []
+                if not att:
+                    search_atts = list(instance.variables.keys())
+                else:
+                    for key in instance.variables.keys():
+                        if not att or att in key.lower():
+                            search_atts.append(key)
+                search_atts = filter(
+                    lambda x: isinstance(instance.variables[x], str), search_atts
+                )
 
-            for search_att in search_atts:
-                if search_att and value in instance.variables[search_att].lower():
-                    # data.append(instance.to_json())
-                    ids.append(_id)
+                for search_att in search_atts:
+                    if search_att and value in instance.variables[search_att].lower():
+                        # data.append(instance.to_json())
+                        ids.append(_id)
         result_ids.append(set(ids))
 
     ids = reduce(lambda a, x: a.intersection(x), result_ids[:-1], result_ids[0])
 
     data = []
     for _id in ids:
-        data.append(app["bpmn_model"].instances[_id].to_json())
+        data.append(get_model_for_instance(_id).instances[_id].to_json())
 
     return web.json_response({"status": "ok", "results": data})
 
@@ -107,9 +115,10 @@ async def search_instance(request):
 async def handle_task_info(request):
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
-    if instance_id not in app["bpmn_model"].instances:
+    m = get_model_for_instance(instance_id)
+    if not m:
         raise aiohttp.web.HTTPNotFound
-    instance = app["bpmn_model"].instances[instance_id]
+    instance = m.instances[instance_id]
     task = instance.model.elements[task_id]
 
     return web.json_response(task.get_info())
@@ -118,9 +127,10 @@ async def handle_task_info(request):
 @routes.get("/instance/{instance_id}")
 async def handle_instance_info(request):
     instance_id = request.match_info.get("instance_id")
-    if instance_id not in app["bpmn_model"].instances:
+    m = get_model_for_instance(instance_id)
+    if not m:
         raise aiohttp.web.HTTPNotFound
-    instance = app["bpmn_model"].instances[instance_id].to_json()
+    instance = m.instances[instance_id].to_json()
 
     return web.json_response(instance)
 
@@ -131,7 +141,7 @@ app = None
 def run():
     global app
     app = web.Application()
-    app.on_startup.append(run_with_server)
+    app.on_startup.append(run_as_server)
     app.add_routes(routes)
 
     cors = aiohttp_cors.setup(
