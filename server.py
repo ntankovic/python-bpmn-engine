@@ -26,11 +26,12 @@ async def run_as_server(app):
     log = db_connector.get_running_instances_log()
     for l in log:
         for key, data in l.items():
-            instance = await app["bpmn_models"][data["model_path"]].create_instance(
-                key, {}
-            )
-            instance = await instance.run_from_log(data["events"])
-            asyncio.create_task(instance.run())
+            if data["model_path"] in app["bpmn_models"]:
+                instance = await app["bpmn_models"][data["model_path"]].create_instance(
+                    key, {}
+                )
+                instance = await instance.run_from_log(data["events"])
+                asyncio.create_task(instance.run())
 
 
 @routes.get("/model")
