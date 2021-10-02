@@ -79,10 +79,11 @@ class BpmnModel:
     def to_json(self):
         return {
             "model_path": self.model_path,
-            "main_process_name": self.main_process.name,
+            "main_process": self.main_process.__dict__,
             "tasks": [
                 x.to_json() for x in self.elements.values() if isinstance(x, UserTask)
             ],
+            "instances": [i._id for i in self.instances.values()],
         }
 
     async def create_instance(self, _id, variables, process=None):

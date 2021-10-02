@@ -33,6 +33,12 @@ async def run_as_server(app):
             asyncio.create_task(instance.run())
 
 
+@routes.get("/model")
+async def get_models(request):
+    data = [m.to_json() for m in models.values()]
+    return web.json_response({"status": "ok", "results": data})
+
+
 @routes.get("/model/{model_name}")
 async def get_model(request):
     model_name = request.match_info.get("model_name")
@@ -41,10 +47,11 @@ async def get_model(request):
     )
 
 
-@routes.post("/instance")
+@routes.post("/model/{model_name}/instance")
 async def handle_new_instance(request):
     _id = str(uuid4())
-    instance = await app["bpmn_model"].create_instance(_id, {})
+    model = request.match_info.get("model_name")
+    instance = await app["bpmn_models"][model].create_instance(_id, {})
     asyncio.create_task(instance.run())
     return web.json_response({"id": _id})
 
