@@ -23,9 +23,10 @@ class RunningInstance(DB.Entity):
 def setup_db():
     if not os.path.isdir("database"):
         os.mkdir("database")
-    if env.DB["provider"] == "postgres":
-        DB.bind(**env.DB)
-    else:
+    try:
+        if env.DB["provider"] == "postgres":
+            DB.bind(**env.DB)
+    except:
         DB.bind(provider="sqlite", filename="database/database.sqlite", create_db=True)
     DB.generate_mapping(create_tables=True)
 

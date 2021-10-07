@@ -7,5 +7,7 @@ models/test_call_activity.bpmn
 models/test_business_rule.bpmn
 models/test_dmn.dmn
 models/test_exe_dmn.dmn
+models/strucna_praksa.bpmn
 py-bpmn-env
 database/
+env.py
