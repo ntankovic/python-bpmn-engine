@@ -103,15 +103,14 @@ class BpmnModel:
 
     # Takes model_path needed for deployed subprocess
     def handle_deployment_subprocesses(self):
-        models_directory = self.model_path.split("/")[:-1]
-        models_directory = "/".join(models_directory) + "/"
+        models_directory = "models/"
 
         other_models_list = []
 
         for m in os.listdir(models_directory):
-            if models_directory + m == self.model_path:
+            if m == self.model_path:
                 continue
-            other_model = BpmnModel(models_directory + m)
+            other_model = BpmnModel(m)
             other_models_list.append(other_model)
         for other_model in other_models_list:
             for subprocess_key in self.subprocesses.keys():

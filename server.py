@@ -17,6 +17,7 @@ routes = web.RouteTableDef()
 models = {}
 for file in os.listdir("models"):
     if file.endswith(".bpmn"):
+        print(file)
         m = BpmnModel(file)
         models[file] = m
 
