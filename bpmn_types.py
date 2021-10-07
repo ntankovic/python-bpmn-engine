@@ -24,6 +24,12 @@ class BpmnObject(object):
     def __repr__(self):
         return f"{type(self).__name__}({self.name or self._id})"
 
+    def to_json(self):
+        return {
+            "_id": self._id,
+            "name": self.name,
+        }
+
     def parse(self, element):
         self._id = element.attrib["id"]
         self.name = element.attrib["name"] if "name" in element.attrib else None
