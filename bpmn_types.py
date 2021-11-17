@@ -286,6 +286,8 @@ class ReceiveTask(Task):
             self.documentation = d.text
 
     def run(self, state, user_input):
+        if isinstance(state, dict) and isinstance(user_input, dict):
+            state.update(user_input)
         return True
 
     def get_info(self):

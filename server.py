@@ -83,12 +83,13 @@ async def handle_form(request):
     return web.json_response({"status": "OK"})
 
 
-@routes.get("/instance/{instance_id}/task/{task_id}/receive")
+@routes.post("/instance/{instance_id}/task/{task_id}/receive")
 async def handle_receive_task(request):
+    data = await request.json()
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
     m = get_model_for_instance(instance_id)
-    m.instances[instance_id].in_queue.put_nowait(ReceiveMessage(task_id))
+    m.instances[instance_id].in_queue.put_nowait(ReceiveMessage(task_id, data))
     return web.json_response({"status": "OK"})
 
 

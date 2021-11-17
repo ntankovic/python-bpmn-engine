@@ -26,8 +26,9 @@ class UserFormMessage:
 
 
 class ReceiveMessage:
-    def __init__(self, task_id):
+    def __init__(self, task_id, data={}):
         self.task_id = task_id
+        self.data = data
 
 
 class BpmnModel:
@@ -284,9 +285,8 @@ class BpmnInstance:
                             and isinstance(message, ReceiveMessage)
                             and message.task_id == current._id
                     ):
-
                         log("DOING:", current)
-                        can_continue = current.run(self.variables, user_action)
+                        can_continue = current.run(self.variables, message.data)
                         # Helper variables for DB insert
                         new_variables = {
                             k: self.variables[k]
@@ -369,7 +369,8 @@ class BpmnInstance:
                     activity_variables=current_and_variables_dict[c],
                 )
 
-        log("WORKFLOW DONE")
+        log("WORKFLOW DONE WITH VARIABLES")
+        log(str(self.variables))
         self.state = "finished"
         self.pending = []
         # Running instance finished
