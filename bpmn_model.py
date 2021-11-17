@@ -369,8 +369,8 @@ class BpmnInstance:
                     activity_variables=current_and_variables_dict[c],
                 )
 
-        log("WORKFLOW DONE WITH VARIABLES")
-        log(str(self.variables))
+        log("WORKFLOW DONE WITH VARIABLES\n" + "---> " + str(self.variables))
+
         self.state = "finished"
         self.pending = []
         # Running instance finished
