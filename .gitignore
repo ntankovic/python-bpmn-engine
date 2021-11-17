@@ -9,3 +9,4 @@ models/test_dmn.dmn
 models/test_exe_dmn.dmn
 py-bpmn-env
 database/
+env.py

@@ -3,7 +3,7 @@ import os
 from aiohttp import web
 from uuid import uuid4
 import asyncio
-from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance
+from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, ReceiveMessage
 import aiohttp_cors
 import db_connector
 from functools import reduce
@@ -15,14 +15,23 @@ routes = web.RouteTableDef()
 # uuid4 = lambda: 2  # hardcoded for easy testing
 
 models = {}
-for file in os.listdir("models"):
-    if file.endswith(".bpmn"):
-        m = BpmnModel(file)
-        models[file] = m
+
+
+def create_models():
+    global models
+    for file in os.listdir("models"):
+        if file.endswith(".bpmn"):
+            try:
+                m = BpmnModel(file)
+                models[file] = m
+            except Exception as e:
+                print("Failed creating BPMN model from " + str(file))
+
+    return models
 
 
 async def run_as_server(app):
-    app["bpmn_models"] = models
+    app["bpmn_models"] = create_models()
     log = db_connector.get_running_instances_log()
     for l in log:
         for key, data in l.items():
@@ -32,6 +41,13 @@ async def run_as_server(app):
                 )
                 instance = await instance.run_from_log(data["events"])
                 asyncio.create_task(instance.run())
+
+
+# Placeholder for a service task
+@routes.get("/test")
+async def test_call(request):
+    print("Called test")
+    return web.json_response({"status": "ok"})
 
 
 @routes.get("/model")
@@ -64,7 +80,15 @@ async def handle_form(request):
     task_id = request.match_info.get("task_id")
     m = get_model_for_instance(instance_id)
     m.instances[instance_id].in_queue.put_nowait(UserFormMessage(task_id, post))
+    return web.json_response({"status": "OK"})
 
+
+@routes.get("/instance/{instance_id}/task/{task_id}/receive")
+async def handle_receive_task(request):
+    instance_id = request.match_info.get("instance_id")
+    task_id = request.match_info.get("task_id")
+    m = get_model_for_instance(instance_id)
+    m.instances[instance_id].in_queue.put_nowait(ReceiveMessage(task_id))
     return web.json_response({"status": "OK"})
 
 

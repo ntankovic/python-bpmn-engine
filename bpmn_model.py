@@ -25,6 +25,11 @@ class UserFormMessage:
         self.form_data = form_data
 
 
+class ReceiveMessage:
+    def __init__(self, task_id):
+        self.task_id = task_id
+
+
 class BpmnModel:
     def __init__(self, model_path):
         self.pending = []
@@ -77,12 +82,11 @@ class BpmnModel:
                 break
 
     def to_json(self):
+        tasks = [x.to_json() for x in self.elements.values() if isinstance(x, UserTask) or isinstance(x, ReceiveTask)]
         return {
             "model_path": self.model_path,
             "main_process": self.main_process.__dict__,
-            "tasks": [
-                x.to_json() for x in self.elements.values() if isinstance(x, UserTask)
-            ],
+            "tasks": tasks,
             "instances": [i._id for i in self.instances.values()],
         }
 
@@ -238,9 +242,9 @@ class BpmnInstance:
 
                 if isinstance(current, UserTask):
                     if (
-                        message
-                        and isinstance(message, UserFormMessage)
-                        and message.task_id == current._id
+                            message
+                            and isinstance(message, UserFormMessage)
+                            and message.task_id == current._id
                     ):
                         user_action = message.form_data
 
@@ -274,6 +278,21 @@ class BpmnInstance:
                         for k in set(self.variables) - set(before_variables)
                     }
                     current_and_variables_dict[current._id] = new_variables
+                elif isinstance(current, ReceiveTask):
+                    if (
+                            message
+                            and isinstance(message, ReceiveMessage)
+                            and message.task_id == current._id
+                    ):
+
+                        log("DOING:", current)
+                        can_continue = current.run(self.variables, user_action)
+                        # Helper variables for DB insert
+                        new_variables = {
+                            k: self.variables[k]
+                            for k in set(self.variables) - set(before_variables)
+                        }
+                        current_and_variables_dict[current._id] = new_variables
 
                 elif isinstance(current, CallActivity):
                     # TODO implement Variables tab CallActivity
@@ -317,7 +336,7 @@ class BpmnInstance:
 
                         if sequence.condition:
                             if self.check_condition(
-                                self.variables, sequence.condition, log
+                                    self.variables, sequence.condition, log
                             ):
                                 next_tasks.append(elements[sequence.target])
                         else:
@@ -350,7 +369,7 @@ class BpmnInstance:
                     activity_variables=current_and_variables_dict[c],
                 )
 
-        log("DONE")
+        log("WORKFLOW DONE")
         self.state = "finished"
         self.pending = []
         # Running instance finished

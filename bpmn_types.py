@@ -248,6 +248,7 @@ class ServiceTask(Task):
             response = call_function(
                 url,
                 params=parameters,
+                timeout=5,
                 json=data,
             )
 
@@ -273,6 +274,28 @@ class SendTask(ServiceTask):
         super(SendTask, self).parse(element)
 
 
+@bpmn_tag("bpmn:receiveTask")
+class ReceiveTask(Task):
+    def __init__(self):
+        self.documentation = ""
+
+    def parse(self, element):
+        super(ReceiveTask, self).parse(element)
+
+        for d in element.findall(".//bpmn:documentation", NS):
+            self.documentation = d.text
+
+    def run(self, state, user_input):
+        return True
+
+    def get_info(self):
+        info = super(ReceiveTask, self).get_info()
+        return {
+            **info,
+            "documentation": self.documentation,
+        }
+
+
 @bpmn_tag("bpmn:callActivity")
 class CallActivity(Task):
     def __init__(self):
@@ -284,9 +307,9 @@ class CallActivity(Task):
         if element.attrib.get("calledElement"):
             self.called_element = element.attrib["calledElement"]
         if (
-            element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding")
-            and element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding")
-            == "deployment"
+                element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding")
+                and element.attrib.get(f"{{{NS['camunda']}}}calledElementBinding")
+                == "deployment"
         ):
             self.deployment = True
 
@@ -330,6 +353,11 @@ class ParallelGateway(Gateway):
 
     def run(self):
         return self.incoming == 0
+
+
+@bpmn_tag("bpmn:inclusiveGateway")
+class InclusiveGateway(Gateway):
+    pass
 
 
 @bpmn_tag("bpmn:exclusiveGateway")

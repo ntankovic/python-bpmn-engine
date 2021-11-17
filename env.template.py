@@ -10,4 +10,6 @@ DS = {
     "airtable": {"type": "http-connector", "url": "http://0.0.0.0:8082"},
     "notification": {"type": "http-connector", "url": "http://0.0.0.0:8081"},
     "pdf": {"type": "http-connector", "url": "http://0.0.0.0:8083"},
+    "test": {"type": "http-connector", "url": "https://api.npoint.io/b3386af27edc165f1399"},
 }
+
