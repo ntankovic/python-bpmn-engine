@@ -237,7 +237,7 @@ class BpmnInstance:
                         activity_id=current._id,
                         timestamp=datetime.now(),
                         pending=[],
-                        activity_variables={},
+                        activity_variables=self.variables,
                     )
                     break
 
