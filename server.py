@@ -16,11 +16,12 @@ routes = web.RouteTableDef()
 
 models = {}
 
-
+ignored_files = ["fipu_ticketing.bpmn"]
 def create_models():
+
     global models
     for file in os.listdir("models"):
-        if file.endswith(".bpmn"):
+        if file.endswith(".bpmn") and file not in ignored_files:
             try:
                 m = BpmnModel(file)
                 models[file] = m
@@ -32,6 +33,7 @@ def create_models():
 
 async def run_as_server(app):
     app["bpmn_models"] = create_models()
+    # db_connector.DB.drop_all_tables(with_all_data=True)
     log = db_connector.get_running_instances_log()
     for l in log:
         for key, data in l.items():

@@ -233,11 +233,11 @@ class ServiceTask(Task):
 
         url = os.path.join(
             self.connector_fields["input_variables"].get("base_url", ""),
-            self.connector_fields["input_variables"]["url"].lstrip("/"),
+            (self.connector_fields["input_variables"].get("url") or "").lstrip("/"),
         )
 
         # Check method and make request
-        if method := self.connector_fields["input_variables"].get("method"):
+        if method := self.connector_fields["input_variables"].get("method") or "GET":
             if method == "POST":
                 call_function = requests.post
             elif method == "PATCH":
