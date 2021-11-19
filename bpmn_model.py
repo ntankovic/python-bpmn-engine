@@ -28,7 +28,7 @@ class UserFormMessage:
 class ReceiveMessage:
     def __init__(self, task_id, data={}):
         self.task_id = task_id
-        self.data = data
+        self.data = data or {}
 
 
 class BpmnModel:

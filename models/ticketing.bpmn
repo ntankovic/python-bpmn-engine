@@ -37,7 +37,7 @@
       <bpmn:lane id="Lane_0thrlpd" name="Student">
         <bpmn:flowNodeRef>Event_005tjuf</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>student_forma</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Activity_08p0in7</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>primi_mail</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
     <bpmn:parallelGateway id="Gateway_1fzwvkz">
@@ -124,11 +124,11 @@
     <bpmn:sequenceFlow id="Flow_1ysjjpi" sourceRef="Gateway_08rqdae" targetRef="Activity_0130ec0" />
     <bpmn:sequenceFlow id="Flow_1yq1601" sourceRef="Gateway_08rqdae" targetRef="radnik_odgovor_studentu" />
     <bpmn:sequenceFlow id="Flow_119qqkd" sourceRef="zatvori_ticket_student" targetRef="zatvori_ticket" />
-    <bpmn:sequenceFlow id="Flow_0e6tnus" sourceRef="Event_005tjuf" targetRef="Activity_08p0in7" />
+    <bpmn:sequenceFlow id="Flow_0e6tnus" sourceRef="Event_005tjuf" targetRef="primi_mail" />
     <bpmn:startEvent id="Event_005tjuf">
       <bpmn:outgoing>Flow_0e6tnus</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:sequenceFlow id="Flow_1t3pfoq" sourceRef="Activity_08p0in7" targetRef="Activity_033gbhu" />
+    <bpmn:sequenceFlow id="Flow_1t3pfoq" sourceRef="primi_mail" targetRef="Activity_033gbhu" />
     <bpmn:userTask id="student_forma" name="Student odgovara na formu">
       <bpmn:incoming>Flow_1k6rf6k</bpmn:incoming>
       <bpmn:outgoing>Flow_1h9qnlf</bpmn:outgoing>
@@ -217,7 +217,7 @@
       <bpmn:incoming>Flow_0svyczs</bpmn:incoming>
       <bpmn:outgoing>Flow_1hehzz7</bpmn:outgoing>
     </bpmn:receiveTask>
-    <bpmn:exclusiveGateway id="Gateway_1de1jmk" name="Proslo 7 dana?">
+    <bpmn:exclusiveGateway id="Gateway_1de1jmk" name="Proslo 7 dana?" default="Flow_1po8wtg">
       <bpmn:incoming>Flow_0qcxzcw</bpmn:incoming>
       <bpmn:outgoing>Flow_0gfpj4b</bpmn:outgoing>
       <bpmn:outgoing>Flow_1po8wtg</bpmn:outgoing>
@@ -240,7 +240,12 @@
     <bpmn:sequenceFlow id="Flow_0qcxzcw" sourceRef="provjera" targetRef="Gateway_1de1jmk" />
     <bpmn:sequenceFlow id="Flow_0gfpj4b" name="Da" sourceRef="Gateway_1de1jmk" targetRef="zatvori_ticket" />
     <bpmn:sequenceFlow id="Flow_1po8wtg" name="Ne" sourceRef="Gateway_1de1jmk" targetRef="Gateway_1ovp5w8" />
-    <bpmn:receiveTask id="Activity_08p0in7" name="Primanje maila">
+    <bpmn:receiveTask id="primi_mail" name="Primanje maila">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="Output_347cqqo">${a}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_0e6tnus</bpmn:incoming>
       <bpmn:outgoing>Flow_1t3pfoq</bpmn:outgoing>
     </bpmn:receiveTask>
@@ -595,7 +600,7 @@
       <bpmndi:BPMNShape id="Activity_1swmgh4_di" bpmnElement="provjera">
         <dc:Bounds x="1840" y="570" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_0d36t3i_di" bpmnElement="Activity_08p0in7">
+      <bpmndi:BPMNShape id="Activity_0d36t3i_di" bpmnElement="primi_mail">
         <dc:Bounds x="240" y="180" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_033gbhu_di" bpmnElement="Activity_033gbhu">

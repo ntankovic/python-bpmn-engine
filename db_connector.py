@@ -56,9 +56,9 @@ def finish_running_instance(instance):
 
 
 @db_session
-def get_running_instances_log():
+def get_instances_log(running=True):
     log = []
-    running_instances = RunningInstance.select(lambda ri: ri.running == True)[:]
+    running_instances = RunningInstance.select(lambda ri: ri.running == running)[:]
     for instance in running_instances:
         instance_dict = {}
         instance_dict[instance.instance_id] = {}
@@ -79,3 +79,4 @@ def get_running_instances_log():
         log.append(instance_dict)
 
     return log
+

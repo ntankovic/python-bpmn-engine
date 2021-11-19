@@ -34,8 +34,12 @@ def create_models():
 async def run_as_server(app):
     app["bpmn_models"] = create_models()
     # db_connector.DB.drop_all_tables(with_all_data=True)
-    log = db_connector.get_running_instances_log()
-    for l in log:
+    logs = db_connector.get_instances_log()
+    print("Running: " + str(len(logs)))
+    completed = db_connector.get_instances_log(running=False)
+    print("Completed: " + str(len(completed)))
+
+    for l in logs:
         for key, data in l.items():
             if data["model_path"] in app["bpmn_models"]:
                 instance = await app["bpmn_models"][data["model_path"]].create_instance(
