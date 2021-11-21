@@ -347,15 +347,14 @@ class CallActivity(Task):
                 ee, self.input_variables, self.output_variables
             )
 
-            self._transform_input_variables()
-
-    def _transform_input_variables(self):
+    def transform_input_variables(self, dict_to_transform):
         for source, target in self.in_mapping.items():
             if "." in str(source):
-                nested_value = nested_dict_get(self.input_variables, str(source))
-                self.input_variables[target] = nested_value
+                nested_value = nested_dict_get(dict_to_transform, str(source))
+                dict_to_transform.pop(str(source).split(".")[0])
+                dict_to_transform[target] = nested_value
             if source in self.input_variables:
-                self.input_variables[target] = self.input_variables.pop(source)
+                dict_to_transform[target] = dict_to_transform.pop(source)
 
     def transform_output_variables(self, dict_to_transform):
         for source, target in self.out_mapping.items():
@@ -377,10 +376,12 @@ class CallActivity(Task):
     async def run_subprocess(self, parent_model, process_id, parent_variables):
         new_subproces_instance_id = str(uuid4())
         inital_variables = {}
-
+        copied = deepcopy(parent_variables)
+        self.transform_input_variables(copied)
         for key in self.input_variables:
-            if key in parent_variables:
-                inital_variables[key] = parent_variables[key]
+            if key in copied:
+                inital_variables[key] = copied[key]
+
         if not parent_model.subprocesses[process_id]:
             new_subprocess_instance: BpmnInstance = await parent_model.create_instance(
                 new_subproces_instance_id, inital_variables, process_id
