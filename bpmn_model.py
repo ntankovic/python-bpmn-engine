@@ -11,6 +11,7 @@ from datetime import datetime
 import os
 from uuid import uuid4
 import env
+from bpmn_types import Task
 
 instance_models = {}
 
@@ -173,6 +174,7 @@ class BpmnInstance:
         self.state = "running"
         _id = self._id
         prefix = f"\t[{_id}]"
+
         log = partial(print, prefix)  # if _id == "2" else lambda *x: x
 
         in_queue = self.in_queue
@@ -210,7 +212,7 @@ class BpmnInstance:
                     }
                     current_and_variables_dict[current._id] = new_variables
                     # Create new running instance
-                    db_connector.add_running_instance(instance_id=self._id)
+                    db_connector.add_running_instance(instance_id=self._id, ran_as_subprocess=is_subprocess)
 
                 if isinstance(current, EndEvent):
                     exit = True
@@ -280,10 +282,10 @@ class BpmnInstance:
                         current_and_variables_dict[current._id] = new_variables
 
                 elif isinstance(current, CallActivity):
-                    # TODO implement Variables tab CallActivity
+
                     log("DOING:", current)
                     can_continue = await current.run_subprocess(self.model, current.called_element, self.variables)
-
+                    log("SUBPROCESS DONE WITH VARIABLES\n" + "---> " + str(self.variables))
                     # Helper variables for DB insert
                     new_variables = {
                         k: self.variables[k]
@@ -354,9 +356,7 @@ class BpmnInstance:
                     pending=[pending._id for pending in self.pending],
                     activity_variables=current_and_variables_dict[c],
                 )
-        if is_subprocess:
-            log("SUBPROCESS DONE WITH VARIABLES\n" + "---> " + str(self.variables))
-        else:
+        if not is_subprocess:
             log("WORKFLOW DONE WITH VARIABLES\n" + "---> " + str(self.variables))
 
         self.state = "finished"

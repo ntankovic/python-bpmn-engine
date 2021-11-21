@@ -371,7 +371,7 @@ class CallActivity(Task):
     async def run_subprocess(self, parent_model, process_id, parent_variables):
         new_subproces_instance_id = str(uuid4())
         inital_variables = {}
-        finished_subprocess_variables = {}
+
         for key in self.input_variables:
             if key in parent_variables:
                 inital_variables[key] = parent_variables[key]

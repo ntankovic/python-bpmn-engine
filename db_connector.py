@@ -17,6 +17,7 @@ class Event(DB.Entity):
 
 class RunningInstance(DB.Entity):
     running = Required(bool)
+    ran_as_subprocess = Required(bool)
     instance_id = Required(str, unique=True)
 
 
@@ -45,8 +46,8 @@ def add_event(
 
 
 @db_session
-def add_running_instance(instance_id):
-    RunningInstance(instance_id=instance_id, running=True)
+def add_running_instance(instance_id, ran_as_subprocess=False):
+    RunningInstance(instance_id=instance_id, running=True, ran_as_subprocess=ran_as_subprocess)
 
 
 @db_session
