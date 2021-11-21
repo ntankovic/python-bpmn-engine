@@ -168,22 +168,7 @@ class BpmnInstance:
                 self.variables = {**l.get("activity_variables"), **self.variables}
         return self
 
-    async def run_subprocess(self, process_id):
-        new_subproces_instance_id = str(uuid4())
-        if not self.model.subprocesses[process_id]:
-            new_subprocess_instance = await self.model.create_instance(
-                new_subproces_instance_id, {}, process_id
-            )
-            finished_subprocess = await new_subprocess_instance.run()
-        else:
-            subprocess_model = BpmnModel(self.model.subprocesses[process_id])
-            new_subproces_instance = await subprocess_model.create_instance(
-                new_subproces_instance_id, {}, process_id
-            )
-            finished_subprocess = await new_subproces_instance.run()
-        return True
-
-    async def run(self):
+    async def run(self, is_subprocess=False):
 
         self.state = "running"
         _id = self._id
@@ -297,7 +282,8 @@ class BpmnInstance:
                 elif isinstance(current, CallActivity):
                     # TODO implement Variables tab CallActivity
                     log("DOING:", current)
-                    can_continue = await self.run_subprocess(current.called_element)
+                    can_continue = await current.run_subprocess(self.model, current.called_element, self.variables)
+
                     # Helper variables for DB insert
                     new_variables = {
                         k: self.variables[k]
@@ -368,11 +354,14 @@ class BpmnInstance:
                     pending=[pending._id for pending in self.pending],
                     activity_variables=current_and_variables_dict[c],
                 )
-
-        log("WORKFLOW DONE WITH VARIABLES\n" + "---> " + str(self.variables))
+        if is_subprocess:
+            log("SUBPROCESS DONE WITH VARIABLES\n" + "---> " + str(self.variables))
+        else:
+            log("WORKFLOW DONE WITH VARIABLES\n" + "---> " + str(self.variables))
 
         self.state = "finished"
         self.pending = []
         # Running instance finished
         db_connector.finish_running_instance(self._id)
+
         return self.variables

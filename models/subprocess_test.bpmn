@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_11hqblx" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.11.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.15.0">
+  <bpmn:collaboration id="Collaboration_0zgm28j">
+    <bpmn:participant id="Participant_037vx5r" name="Test" processRef="Process_1f3ozj0" />
+    <bpmn:participant id="Participant_1kn4tes" name="Test" processRef="subproc" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_1f3ozj0" name="Test 2" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_0jd6o4s</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Activity_1bqfg2d" name="Run something">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">GET</camunda:inputParameter>
+            <camunda:inputParameter name="url" />
+          </camunda:inputOutput>
+          <camunda:connectorId>test</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0jd6o4s</bpmn:incoming>
+      <bpmn:outgoing>Flow_0kv37am</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:callActivity id="Activity_1dd577g" name="Call activity" calledElement="subproc">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="time">${time}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0kv37am</bpmn:incoming>
+      <bpmn:outgoing>Flow_1s2pndl</bpmn:outgoing>
+    </bpmn:callActivity>
+    <bpmn:endEvent id="Event_1fmf7to">
+      <bpmn:incoming>Flow_0hgqpj8</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0jd6o4s" sourceRef="StartEvent_1" targetRef="Activity_1bqfg2d" />
+    <bpmn:sequenceFlow id="Flow_0kv37am" sourceRef="Activity_1bqfg2d" targetRef="Activity_1dd577g" />
+    <bpmn:sequenceFlow id="Flow_1s2pndl" sourceRef="Activity_1dd577g" targetRef="Activity_0t4m4nr" />
+    <bpmn:sequenceFlow id="Flow_0hgqpj8" sourceRef="Activity_0t4m4nr" targetRef="Event_1fmf7to" />
+    <bpmn:serviceTask id="Activity_0t4m4nr" name="Run something">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">GET</camunda:inputParameter>
+            <camunda:inputParameter name="url" />
+          </camunda:inputOutput>
+          <camunda:connectorId>test</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1s2pndl</bpmn:incoming>
+      <bpmn:outgoing>Flow_0hgqpj8</bpmn:outgoing>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmn:process id="subproc" name="Test 3" isExecutable="true">
+    <bpmn:sequenceFlow id="Flow_1mg4kow" sourceRef="Event_0r4jkgp" targetRef="Activity_1vyi66x" />
+    <bpmn:sequenceFlow id="Flow_01x5waz" sourceRef="Activity_1vyi66x" targetRef="middle" />
+    <bpmn:endEvent id="Event_10939yq">
+      <bpmn:incoming>Flow_17poo2h</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:startEvent id="Event_0r4jkgp">
+      <bpmn:outgoing>Flow_1mg4kow</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Activity_1vyi66x" name="Run something in sub">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">GET</camunda:inputParameter>
+            <camunda:inputParameter name="url" />
+          </camunda:inputOutput>
+          <camunda:connectorId>test</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1mg4kow</bpmn:incoming>
+      <bpmn:outgoing>Flow_01x5waz</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:receiveTask id="middle" name="middle">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="time">${time}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_01x5waz</bpmn:incoming>
+      <bpmn:outgoing>Flow_17poo2h</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:sequenceFlow id="Flow_17poo2h" sourceRef="middle" targetRef="Event_10939yq" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0zgm28j">
+      <bpmndi:BPMNShape id="Participant_037vx5r_di" bpmnElement="Participant_037vx5r" isHorizontal="true">
+        <dc:Bounds x="129" y="79" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0jd6o4s_di" bpmnElement="Flow_0jd6o4s">
+        <di:waypoint x="197" y="135" />
+        <di:waypoint x="197" y="210" />
+        <di:waypoint x="220" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0kv37am_di" bpmnElement="Flow_0kv37am">
+        <di:waypoint x="320" y="210" />
+        <di:waypoint x="340" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1s2pndl_di" bpmnElement="Flow_1s2pndl">
+        <di:waypoint x="440" y="210" />
+        <di:waypoint x="480" y="210" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0hgqpj8_di" bpmnElement="Flow_0hgqpj8">
+        <di:waypoint x="530" y="170" />
+        <di:waypoint x="530" y="140" />
+        <di:waypoint x="652" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1bqfg2d_di" bpmnElement="Activity_1bqfg2d">
+        <dc:Bounds x="220" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1xzvfvp_di" bpmnElement="Activity_1dd577g">
+        <dc:Bounds x="340" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1fmf7to_di" bpmnElement="Event_1fmf7to">
+        <dc:Bounds x="652" y="122" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0t4m4nr_di" bpmnElement="Activity_0t4m4nr">
+        <dc:Bounds x="480" y="170" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_1kn4tes_di" bpmnElement="Participant_1kn4tes" isHorizontal="true">
+        <dc:Bounds x="210" y="410" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1mg4kow_di" bpmnElement="Flow_1mg4kow">
+        <di:waypoint x="296" y="520" />
+        <di:waypoint x="328" y="520" />
+        <di:waypoint x="328" y="490" />
+        <di:waypoint x="360" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_01x5waz_di" bpmnElement="Flow_01x5waz">
+        <di:waypoint x="460" y="490" />
+        <di:waypoint x="510" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_17poo2h_di" bpmnElement="Flow_17poo2h">
+        <di:waypoint x="610" y="490" />
+        <di:waypoint x="692" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_10939yq_di" bpmnElement="Event_10939yq">
+        <dc:Bounds x="692" y="472" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0r4jkgp_di" bpmnElement="Event_0r4jkgp">
+        <dc:Bounds x="260" y="502" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1vyi66x_di" bpmnElement="Activity_1vyi66x">
+        <dc:Bounds x="360" y="450" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0k70i84_di" bpmnElement="middle">
+        <dc:Bounds x="510" y="450" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

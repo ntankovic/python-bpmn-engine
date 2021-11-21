@@ -16,7 +16,6 @@
         <bpmn:flowNodeRef>Activity_1eq422r</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Activity_115syfs</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Activity_1uerjsf</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>Activity_1sg89xe</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_1564up3</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Activity_0130ec0</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>potvrda_dodjele</bpmn:flowNodeRef>
@@ -43,6 +42,7 @@
         <bpmn:flowNodeRef>Activity_004j8gr</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Activity_1ipxowd</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>radnik_odgovor_studentu</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_1sg89xe</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_0thrlpd" name="Student">
         <bpmn:flowNodeRef>zatvori_ticket_student</bpmn:flowNodeRef>
@@ -150,19 +150,6 @@
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_1n982kb</bpmn:incoming>
-    </bpmn:sendTask>
-    <bpmn:sendTask id="Activity_1sg89xe" name="Obavještavanje studenta">
-      <bpmn:extensionElements>
-        <camunda:connector>
-          <camunda:connectorId>test</camunda:connectorId>
-        </camunda:connector>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="next_task">ispunjavanje_prijavnice_student</camunda:inputParameter>
-          <camunda:inputParameter name="id_instance" />
-          <camunda:inputParameter name="kompanija">${kompanija}</camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn:extensionElements>
-      <bpmn:incoming>Flow_0hsk5mi</bpmn:incoming>
     </bpmn:sendTask>
     <bpmn:parallelGateway id="Gateway_1564up3">
       <bpmn:incoming>Flow_008r62j</bpmn:incoming>
@@ -491,6 +478,16 @@
       <bpmn:incoming>Flow_1iwp7nr</bpmn:incoming>
       <bpmn:outgoing>Flow_0z10y5v</bpmn:outgoing>
     </bpmn:receiveTask>
+    <bpmn:sequenceFlow id="Flow_0yhreyh" sourceRef="student_forma" targetRef="Activity_1qayqq0" />
+    <bpmn:sequenceFlow id="Flow_18bdozu" sourceRef="Activity_0w58ase" targetRef="Activity_1qayqq0" />
+    <bpmn:inclusiveGateway id="Gateway_15ozh9b">
+      <bpmn:incoming>Flow_0axa5ld</bpmn:incoming>
+      <bpmn:outgoing>Flow_0bsua64</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0spb26m</bpmn:outgoing>
+    </bpmn:inclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_0bsua64" sourceRef="Gateway_15ozh9b" targetRef="Gateway_0b8ppak" />
+    <bpmn:sequenceFlow id="Flow_0spb26m" sourceRef="Gateway_15ozh9b" targetRef="zatvori_ticket_student" />
+    <bpmn:sequenceFlow id="Flow_0axa5ld" sourceRef="Gateway_1ovp5w8" targetRef="Gateway_15ozh9b" />
     <bpmn:serviceTask id="Activity_0txq8tu" name="Obrada maila">
       <bpmn:documentation>Ticket je napravljen te se čeka na managera da dodjeli radniku </bpmn:documentation>
       <bpmn:extensionElements>
@@ -557,16 +554,19 @@
       <bpmn:incoming>Flow_1aqrxco</bpmn:incoming>
       <bpmn:outgoing>Flow_1mcdjus</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:sequenceFlow id="Flow_0yhreyh" sourceRef="student_forma" targetRef="Activity_1qayqq0" />
-    <bpmn:sequenceFlow id="Flow_18bdozu" sourceRef="Activity_0w58ase" targetRef="Activity_1qayqq0" />
-    <bpmn:inclusiveGateway id="Gateway_15ozh9b">
-      <bpmn:incoming>Flow_0axa5ld</bpmn:incoming>
-      <bpmn:outgoing>Flow_0bsua64</bpmn:outgoing>
-      <bpmn:outgoing>Flow_0spb26m</bpmn:outgoing>
-    </bpmn:inclusiveGateway>
-    <bpmn:sequenceFlow id="Flow_0bsua64" sourceRef="Gateway_15ozh9b" targetRef="Gateway_0b8ppak" />
-    <bpmn:sequenceFlow id="Flow_0spb26m" sourceRef="Gateway_15ozh9b" targetRef="zatvori_ticket_student" />
-    <bpmn:sequenceFlow id="Flow_0axa5ld" sourceRef="Gateway_1ovp5w8" targetRef="Gateway_15ozh9b" />
+    <bpmn:sendTask id="Activity_1sg89xe" name="Obavještavanje studenta">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:connectorId>test</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="next_task">ispunjavanje_prijavnice_student</camunda:inputParameter>
+          <camunda:inputParameter name="id_instance" />
+          <camunda:inputParameter name="kompanija">${kompanija}</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0hsk5mi</bpmn:incoming>
+    </bpmn:sendTask>
   </bpmn:process>
   <bpmn:message id="Message_00av2r0" name="Message_3ab1mfb" />
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
@@ -581,7 +581,7 @@
         <dc:Bounds x="190" y="448" width="2668" height="502" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_1o6mm97_di" bpmnElement="Flow_1o6mm97">
-        <di:waypoint x="1500" y="790" />
+        <di:waypoint x="1500" y="810" />
         <di:waypoint x="1500" y="670" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_17c5f2k_di" bpmnElement="Flow_17c5f2k">
@@ -589,12 +589,12 @@
         <di:waypoint x="890" y="595" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_00x4tdz_di" bpmnElement="Flow_00x4tdz">
-        <di:waypoint x="1280" y="830" />
-        <di:waypoint x="1450" y="830" />
+        <di:waypoint x="1280" y="850" />
+        <di:waypoint x="1450" y="850" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_0z10y5v_di" bpmnElement="Flow_0z10y5v">
         <di:waypoint x="1230" y="770" />
-        <di:waypoint x="1230" y="790" />
+        <di:waypoint x="1230" y="810" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1iwp7nr_di" bpmnElement="Flow_1iwp7nr">
         <di:waypoint x="1230" y="655" />
@@ -602,8 +602,8 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1aqrxco_di" bpmnElement="Flow_1aqrxco">
         <di:waypoint x="1230" y="605" />
-        <di:waypoint x="1230" y="520" />
-        <di:waypoint x="1310" y="520" />
+        <di:waypoint x="1230" y="510" />
+        <di:waypoint x="1310" y="510" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_03kqyvr_di" bpmnElement="Flow_03kqyvr">
         <di:waypoint x="290" y="318" />
@@ -650,13 +650,13 @@
         <di:waypoint x="960" y="620" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1mcdjus_di" bpmnElement="Flow_1mcdjus">
-        <di:waypoint x="1410" y="520" />
-        <di:waypoint x="1500" y="520" />
+        <di:waypoint x="1410" y="510" />
+        <di:waypoint x="1500" y="510" />
         <di:waypoint x="1500" y="590" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_0hsk5mi_di" bpmnElement="Flow_0hsk5mi">
         <di:waypoint x="1630" y="605" />
-        <di:waypoint x="1630" y="540" />
+        <di:waypoint x="1630" y="550" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_008r62j_di" bpmnElement="Flow_008r62j">
         <di:waypoint x="910" y="740" />
@@ -761,7 +761,7 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_14n4m0f_di" bpmnElement="Flow_14n4m0f">
         <di:waypoint x="1630" y="655" />
-        <di:waypoint x="1630" y="790" />
+        <di:waypoint x="1630" y="810" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1j6qcpl_di" bpmnElement="Flow_1j6qcpl">
         <di:waypoint x="1655" y="630" />
@@ -829,9 +829,6 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gateway_15ozh9b_di" bpmnElement="Gateway_15ozh9b">
         <dc:Bounds x="1805" y="365" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_1sg89xe_di" bpmnElement="Activity_1sg89xe">
-        <dc:Bounds x="1580" y="460" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gateway_1564up3_di" bpmnElement="Gateway_1564up3">
         <dc:Bounds x="985" y="715" width="50" height="50" />
@@ -915,16 +912,19 @@
         <dc:Bounds x="1180" y="690" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_0txq8tu_di" bpmnElement="Activity_0txq8tu">
-        <dc:Bounds x="1180" y="790" width="100" height="80" />
+        <dc:Bounds x="1180" y="810" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_004j8gr_di" bpmnElement="Activity_004j8gr">
-        <dc:Bounds x="1450" y="790" width="100" height="80" />
+        <dc:Bounds x="1450" y="810" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_08tt63j_di" bpmnElement="Activity_1ipxowd">
-        <dc:Bounds x="1580" y="790" width="100" height="80" />
+        <dc:Bounds x="1580" y="810" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_0ea7d2o_di" bpmnElement="radnik_odgovor_studentu">
-        <dc:Bounds x="1310" y="480" width="100" height="80" />
+        <dc:Bounds x="1310" y="470" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1sg89xe_di" bpmnElement="Activity_1sg89xe">
+        <dc:Bounds x="1580" y="470" width="100" height="80" />
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

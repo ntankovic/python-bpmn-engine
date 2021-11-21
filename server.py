@@ -3,7 +3,7 @@ import os
 from aiohttp import web
 from uuid import uuid4
 import asyncio
-from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, ReceiveMessage
+from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, ReceiveMessage, BpmnInstance
 import aiohttp_cors
 import db_connector
 from functools import reduce
@@ -17,8 +17,9 @@ routes = web.RouteTableDef()
 models = {}
 
 ignored_files = ["fipu_ticketing.bpmn"]
-def create_models():
 
+
+def create_models():
     global models
     for file in os.listdir("models"):
         if file.endswith(".bpmn") and file not in ignored_files:
@@ -27,6 +28,7 @@ def create_models():
                 models[file] = m
             except Exception as e:
                 print("Failed creating BPMN model from " + str(file))
+                raise e
 
     return models
 
@@ -154,10 +156,10 @@ async def search_instance(request):
 async def handle_task_info(request):
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
-    m = get_model_for_instance(instance_id)
+    m: BpmnModel = get_model_for_instance(instance_id)
     if not m:
         raise aiohttp.web.HTTPNotFound
-    instance = m.instances[instance_id]
+    instance:BpmnInstance = m.instances[instance_id]
     task = instance.model.elements[task_id]
 
     return web.json_response(task.get_info())

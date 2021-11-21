@@ -1,6 +1,11 @@
+from copy import deepcopy
+from uuid import uuid4
+
 import requests
 import os
 import env
+from bpmn_model import *
+
 from utils.common import parse_expression
 
 NS = {
@@ -81,6 +86,30 @@ class SequenceFlow(BpmnObject):
 class Task(BpmnObject):
     def parse(self, element):
         super(Task, self).parse(element)
+
+    def _parse_input_output_variables(self, element, input_dict, output_dict):
+        for io in element.findall(".camunda:inputOutput", NS):
+            for inparam in io.findall(".camunda:inputParameter", NS):
+                self._parse_input_output_parameters(inparam, input_dict)
+            for outparam in io.findall(".camunda:outputParameter", NS):
+                self._parse_input_output_parameters(outparam, output_dict)
+
+    def _parse_input_output_parameters(self, element, dictionary):
+        if element.findall(".camunda:list", NS):
+            helper_list = []
+            for lv in element.find("camunda:list", NS):
+                helper_list.append(lv.text) if lv.text else ""
+            dictionary[element.attrib["name"]] = helper_list
+        elif element.findall(".camunda:map", NS):
+            helper_dict = {}
+            for mv in element.find("camunda:map", NS):
+                helper_dict[mv.attrib["key"]] = mv.text
+            dictionary[element.attrib["name"]] = helper_dict
+        elif element.findall(".camunda:script", NS):
+            # script not supported
+            pass
+        else:
+            dictionary[element.attrib["name"]] = element.text if element.text else ""
 
     def get_info(self):
         return {"type": self.tag}
@@ -178,30 +207,6 @@ class ServiceTask(Task):
                     self.connector_fields["connector_id"] = ds["type"]
                     self.connector_fields["input_variables"]["base_url"] = ds["url"]
 
-    def _parse_input_output_variables(self, element, input_dict, output_dict):
-        for io in element.findall(".camunda:inputOutput", NS):
-            for inparam in io.findall(".camunda:inputParameter", NS):
-                self._parse_input_output_parameters(inparam, input_dict)
-            for outparam in io.findall(".camunda:outputParameter", NS):
-                self._parse_input_output_parameters(outparam, output_dict)
-
-    def _parse_input_output_parameters(self, element, dictionary):
-        if element.findall(".camunda:list", NS):
-            helper_list = []
-            for lv in element.find("camunda:list", NS):
-                helper_list.append(lv.text) if lv.text else ""
-            dictionary[element.attrib["name"]] = helper_list
-        elif element.findall(".camunda:map", NS):
-            helper_dict = {}
-            for mv in element.find("camunda:map", NS):
-                helper_dict[mv.attrib["key"]] = mv.text
-            dictionary[element.attrib["name"]] = helper_dict
-        elif element.findall(".camunda:script", NS):
-            # script not supported
-            pass
-        else:
-            dictionary[element.attrib["name"]] = element.text if element.text else ""
-
     async def run_connector(self, variables, instance_id):
         # Check for URL parameters
         parameters = {}
@@ -278,16 +283,24 @@ class SendTask(ServiceTask):
 class ReceiveTask(Task):
     def __init__(self):
         self.documentation = ""
+        self.input_variables = {}
+        self.output_variables = {}
 
     def parse(self, element):
         super(ReceiveTask, self).parse(element)
-
+        for ee in element.findall(".//bpmn:extensionElements", NS):
+            # Find direct children inputOutput, Input/Output tab in Camunda
+            self._parse_input_output_variables(
+                ee, self.input_variables, self.output_variables
+            )
         for d in element.findall(".//bpmn:documentation", NS):
             self.documentation = d.text
 
     def run(self, state, user_input):
         if isinstance(state, dict) and isinstance(user_input, dict):
-            state.update(user_input)
+            for key in self.output_variables:
+                if key in user_input:
+                    state[key] = user_input[key]
         return True
 
     def get_info(self):
@@ -301,8 +314,11 @@ class ReceiveTask(Task):
 @bpmn_tag("bpmn:callActivity")
 class CallActivity(Task):
     def __init__(self):
+        super().__init__()
         self.deployment = False
         self.called_element = ""
+        self.output_variables = {}
+        self.input_variables = {}
 
     def parse(self, element):
         super(CallActivity, self).parse(element)
@@ -314,6 +330,39 @@ class CallActivity(Task):
                 == "deployment"
         ):
             self.deployment = True
+
+        for ee in element.findall(".//bpmn:extensionElements", NS):
+            # Find direct children inputOutput, Input/Output tab in Camunda
+            self._parse_input_output_variables(
+                ee, self.input_variables, self.output_variables
+            )
+
+    async def run_subprocess(self, parent_model, process_id, parent_variables):
+        new_subproces_instance_id = str(uuid4())
+        inital_variables = {}
+        for key in self.input_variables:
+            if key in parent_variables:
+                inital_variables[key] = parent_variables[key]
+        if not parent_model.subprocesses[process_id]:
+            new_subprocess_instance: BpmnInstance = await parent_model.create_instance(
+                new_subproces_instance_id, inital_variables, process_id
+            )
+
+            finished_subprocess = await new_subprocess_instance.run(is_subprocess=True)
+        else:
+            subprocess_model = BpmnModel(parent_model.subprocesses[process_id])
+            new_subprocess_instance: BpmnInstance = await subprocess_model.create_instance(
+                new_subproces_instance_id, inital_variables, process_id
+            )
+            finished_subprocess = await new_subprocess_instance.run(is_subprocess=True)
+
+        if finished_subprocess is not None:
+            new_vars = dict(deepcopy(finished_subprocess))
+            for key in self.output_variables:
+                if key in new_vars:
+                    parent_variables[key] = new_vars[key]
+
+        return finished_subprocess is not None
 
 
 @bpmn_tag("bpmn:businessRule")
