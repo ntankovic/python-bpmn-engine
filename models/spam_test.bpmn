@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0tmi5eh" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.11.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.15.0">
+  <bpmn:collaboration id="Collaboration_1cm7gxn">
+    <bpmn:participant id="Participant_0o0amfd" name="spam" processRef="spam" />
+  </bpmn:collaboration>
+  <bpmn:process id="spam" name="spam" isExecutable="true">
+    <bpmn:endEvent id="Event_06nq36c" />
+    <bpmn:sequenceFlow id="Flow_0c2r0ko" sourceRef="Activity_1n4k182" targetRef="Activity_0xiap49" />
+    <bpmn:sequenceFlow id="Flow_0t55lv0" sourceRef="StartEvent_1" targetRef="Activity_1n4k182" />
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_0t55lv0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Activity_1n4k182" name="Run something 5mb">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">GET</camunda:inputParameter>
+            <camunda:inputParameter name="url">5MB.zip</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>test</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0t55lv0</bpmn:incoming>
+      <bpmn:incoming>Flow_1jpuxxm</bpmn:incoming>
+      <bpmn:outgoing>Flow_0c2r0ko</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_0xiap49" name="Run something 20mb">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">GET</camunda:inputParameter>
+            <camunda:inputParameter name="url">20MB.zip</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>test</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0c2r0ko</bpmn:incoming>
+      <bpmn:outgoing>Flow_1jpuxxm</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1jpuxxm" sourceRef="Activity_0xiap49" targetRef="Activity_1n4k182" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1cm7gxn">
+      <bpmndi:BPMNShape id="Participant_0o0amfd_di" bpmnElement="Participant_0o0amfd" isHorizontal="true">
+        <dc:Bounds x="129" y="40" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0c2r0ko_di" bpmnElement="Flow_0c2r0ko">
+        <di:waypoint x="390" y="171" />
+        <di:waypoint x="460" y="171" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0t55lv0_di" bpmnElement="Flow_0t55lv0">
+        <di:waypoint x="197" y="159" />
+        <di:waypoint x="197" y="111" />
+        <di:waypoint x="290" y="111" />
+        <di:waypoint x="290" y="141" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1jpuxxm_di" bpmnElement="Flow_1jpuxxm">
+        <di:waypoint x="560" y="169" />
+        <di:waypoint x="640" y="165" />
+        <di:waypoint x="500" y="290" />
+        <di:waypoint x="410" y="270" />
+        <di:waypoint x="340" y="290" />
+        <di:waypoint x="340" y="211" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_06nq36c_di" bpmnElement="Event_06nq36c">
+        <dc:Bounds x="652" y="83" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="159" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1n4k182_di" bpmnElement="Activity_1n4k182">
+        <dc:Bounds x="290" y="131" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0xiap49_di" bpmnElement="Activity_0xiap49">
+        <dc:Bounds x="460" y="131" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
