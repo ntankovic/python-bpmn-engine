@@ -19,6 +19,8 @@ class RunningInstance(DB.Entity):
     running = Required(bool)
     ran_as_subprocess = Required(bool)
     instance_id = Required(str, unique=True)
+    # maybe need this
+    # initiator_instance_id = Optional(str)
 
 
 def setup_db():
@@ -33,7 +35,7 @@ def setup_db():
 
 @db_session
 def add_event(
-    model_name, instance_id, activity_id, timestamp, pending, activity_variables
+        model_name, instance_id, activity_id, timestamp, pending, activity_variables
 ):
     Event(
         model_name=model_name,
@@ -80,4 +82,3 @@ def get_instances_log(running=True):
         log.append(instance_dict)
 
     return log
-
