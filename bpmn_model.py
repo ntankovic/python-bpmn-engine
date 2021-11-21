@@ -11,7 +11,7 @@ from datetime import datetime
 import os
 from uuid import uuid4
 import env
-from bpmn_types import Task
+from bpmn_types import Task, ServiceTask
 
 instance_models = {}
 
@@ -168,6 +168,11 @@ class BpmnInstance:
                 self.pending = pending_elements_list
                 self.variables = {**l.get("activity_variables"), **self.variables}
         return self
+
+    # async def run(self, is_subprocess=False):
+    #     import _thread
+    #     _thread.start_new_thread(asyncio.run, args=(self._run(is_subprocess=is_subprocess),))
+    #     print("thread")
 
     async def run(self, is_subprocess=False):
 

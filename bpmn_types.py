@@ -2,15 +2,19 @@ from copy import deepcopy
 from uuid import uuid4
 from xml import etree
 
+import aiohttp
 import requests
 import os
-
+from aiohttp.client import ClientSession, ClientTimeout, ContentTypeError
 import xml.etree.ElementTree as ET
 
 import env
 from bpmn_model import *
 
-from utils.common import parse_expression, nested_dict_get
+timeout = ClientTimeout(sock_connect=5)
+client_session = ClientSession(timeout=timeout)
+
+from utils.common import parse_expression, nested_dict_get, nested_dict_set
 
 NS = {
     "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
@@ -246,27 +250,34 @@ class ServiceTask(Task):
         )
 
         # Check method and make request
+
         if method := self.connector_fields["input_variables"].get("method") or "GET":
             if method == "POST":
-                call_function = requests.post
+                call_function = client_session.post
             elif method == "PATCH":
-                call_function = requests.patch
+                call_function = client_session.patch
             else:
-                call_function = requests.get
+                call_function = client_session.get
 
-            response = call_function(
+            response = await call_function(
                 url,
                 params=parameters,
-                timeout=5,
-                json=data,
+                data=data,
             )
+            if response.status not in (200, 201):
+                raise Exception(response.text)
 
-        if response.status_code not in (200, 201):
-            raise Exception(response.text)
+        r = {}
+        try:
+            r = await response.json()
+        except Exception as e:
+            print("error")
+            if not isinstance(e, ContentTypeError):
+                raise e
 
-        # Check for output variables
+            # Check for output variables
+
         if self.output_variables:
-            r = response.json()
             for key in self.output_variables:
                 if key in r:
                     variables[key] = r[key]
