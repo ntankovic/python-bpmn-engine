@@ -259,6 +259,7 @@ class ServiceTask(Task):
         r = {}
         try:
             r = await response.json()
+
         except Exception as e:
             print("error")
             if not isinstance(e, ContentTypeError):
@@ -266,7 +267,6 @@ class ServiceTask(Task):
 
         # Check for output variables
         if self.output_variables:
-            r = response.json()
             for key in self.output_variables:
                 if key in r:
                     variables[key] = r[key]
