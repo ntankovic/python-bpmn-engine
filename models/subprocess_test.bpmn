@@ -24,8 +24,10 @@
     <bpmn:callActivity id="Activity_1dd577g" name="Call activity" calledElement="subproc">
       <bpmn:extensionElements>
         <camunda:inputOutput>
-          <camunda:outputParameter name="time">${time}</camunda:outputParameter>
+          <camunda:outputParameter name="timetest">${time}</camunda:outputParameter>
         </camunda:inputOutput>
+        <camunda:in source="a" target="b" />
+        <camunda:out source="c" target="d" />
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_0kv37am</bpmn:incoming>
       <bpmn:outgoing>Flow_1s2pndl</bpmn:outgoing>
@@ -76,7 +78,7 @@
     <bpmn:receiveTask id="middle" name="middle">
       <bpmn:extensionElements>
         <camunda:inputOutput>
-          <camunda:outputParameter name="time">${time}</camunda:outputParameter>
+          <camunda:outputParameter name="timetest">${time}</camunda:outputParameter>
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_01x5waz</bpmn:incoming>

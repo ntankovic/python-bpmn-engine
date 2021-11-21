@@ -1,8 +1,12 @@
 from copy import deepcopy
 from uuid import uuid4
+from xml import etree
 
 import requests
 import os
+
+import xml.etree.ElementTree as ET
+
 import env
 from bpmn_model import *
 
@@ -319,6 +323,10 @@ class CallActivity(Task):
         self.called_element = ""
         self.output_variables = {}
         self.input_variables = {}
+        # <camunda:in source="a" target="b" />
+        # {source:target}
+        self.in_mapping = {}
+        self.out_mapping = {}
 
     def parse(self, element):
         super(CallActivity, self).parse(element)
@@ -333,13 +341,37 @@ class CallActivity(Task):
 
         for ee in element.findall(".//bpmn:extensionElements", NS):
             # Find direct children inputOutput, Input/Output tab in Camunda
+            self._parse_mappings(ee, self.in_mapping, self.out_mapping)
+
             self._parse_input_output_variables(
                 ee, self.input_variables, self.output_variables
             )
 
+            self._transform_input_variables()
+
+    def _transform_input_variables(self):
+        for key, value in self.in_mapping.items():
+            if key in self.input_variables:
+                self.input_variables[value] = self.input_variables.pop(key)
+
+    def transform_output_variables(self, dict_to_transform):
+        for key, value in self.out_mapping.items():
+            if key in dict_to_transform:
+                dict_to_transform[value] = dict_to_transform.pop(key)
+
+    def _parse_mappings(self, ee, in_dict, out_dict):
+        for io in ee.findall(".camunda:in", NS):
+            self._parse_in_out_mapping(io, in_dict)
+        for out in ee.findall(".camunda:out", NS):
+            self._parse_in_out_mapping(out, out_dict)
+
+    def _parse_in_out_mapping(self, element, dictionary):
+        dictionary[element.attrib["source"]] = element.attrib["target"]
+
     async def run_subprocess(self, parent_model, process_id, parent_variables):
         new_subproces_instance_id = str(uuid4())
         inital_variables = {}
+        finished_subprocess_variables = {}
         for key in self.input_variables:
             if key in parent_variables:
                 inital_variables[key] = parent_variables[key]
@@ -348,21 +380,26 @@ class CallActivity(Task):
                 new_subproces_instance_id, inital_variables, process_id
             )
 
-            finished_subprocess = await new_subprocess_instance.run(is_subprocess=True)
+            finished_subprocess_variables = await new_subprocess_instance.run(is_subprocess=True)
         else:
             subprocess_model = BpmnModel(parent_model.subprocesses[process_id])
             new_subprocess_instance: BpmnInstance = await subprocess_model.create_instance(
                 new_subproces_instance_id, inital_variables, process_id
             )
-            finished_subprocess = await new_subprocess_instance.run(is_subprocess=True)
+            finished_subprocess_variables = await new_subprocess_instance.run(is_subprocess=True)
 
-        if finished_subprocess is not None:
-            new_vars = dict(deepcopy(finished_subprocess))
+        if finished_subprocess_variables is not None:
+            new_vars = dict(deepcopy(finished_subprocess_variables))
+            # todo: check this
+            # if my process outputs "status" in new vars i need to transform it to "ticket_status"
+            # as im expecting "ticket_status" in output_variables
+            # lol this confused me
+            self.transform_output_variables(new_vars)
             for key in self.output_variables:
                 if key in new_vars:
                     parent_variables[key] = new_vars[key]
 
-        return finished_subprocess is not None
+        return finished_subprocess_variables is not None
 
 
 @bpmn_tag("bpmn:businessRule")
