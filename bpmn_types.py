@@ -2,7 +2,11 @@ import requests
 import os
 import env
 from utils.common import parse_expression
+import aiohttp
+from aiohttp.client import ClientSession, ClientTimeout, ContentTypeError
 
+timeout = ClientTimeout(sock_connect=5)
+client_session = ClientSession(timeout=timeout)
 NS = {
     "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
     "camunda": "http://camunda.org/schema/1.0/bpmn",
@@ -233,26 +237,32 @@ class ServiceTask(Task):
 
         url = os.path.join(
             self.connector_fields["input_variables"].get("base_url", ""),
-            self.connector_fields["input_variables"]["url"].lstrip("/"),
+            (self.connector_fields["input_variables"].get("url") or "").lstrip("/"),
         )
-
         # Check method and make request
-        if method := self.connector_fields["input_variables"].get("method"):
+        if method := self.connector_fields["input_variables"].get("method") or "GET":
             if method == "POST":
-                call_function = requests.post
+                call_function = client_session.post
             elif method == "PATCH":
-                call_function = requests.patch
+                call_function = client_session.patch
             else:
-                call_function = requests.get
+                call_function = client_session.get
 
-            response = call_function(
+            response = await call_function(
                 url,
                 params=parameters,
-                json=data,
+                data=data,
             )
+            if response.status not in (200, 201):
+                raise Exception(response.text)
 
-        if response.status_code not in (200, 201):
-            raise Exception(response.text)
+        r = {}
+        try:
+            r = await response.json()
+        except Exception as e:
+            print("error")
+            if not isinstance(e, ContentTypeError):
+                raise e
 
         # Check for output variables
         if self.output_variables:
