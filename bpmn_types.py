@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import env
 from bpmn_model import *
 
-from utils.common import parse_expression
+from utils.common import parse_expression, nested_dict_get
 
 NS = {
     "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
@@ -350,14 +350,20 @@ class CallActivity(Task):
             self._transform_input_variables()
 
     def _transform_input_variables(self):
-        for key, value in self.in_mapping.items():
-            if key in self.input_variables:
-                self.input_variables[value] = self.input_variables.pop(key)
+        for source, target in self.in_mapping.items():
+            if "." in str(source):
+                nested_value = nested_dict_get(self.input_variables, str(source))
+                self.input_variables[target] = nested_value
+            if source in self.input_variables:
+                self.input_variables[target] = self.input_variables.pop(source)
 
     def transform_output_variables(self, dict_to_transform):
-        for key, value in self.out_mapping.items():
-            if key in dict_to_transform:
-                dict_to_transform[value] = dict_to_transform.pop(key)
+        for source, target in self.out_mapping.items():
+            if "." in str(source):
+                nested_value = nested_dict_get(dict_to_transform, str(source))
+                dict_to_transform[target] = nested_value
+            if source in dict_to_transform:
+                dict_to_transform[target] = dict_to_transform.pop(source)
 
     def _parse_mappings(self, ee, in_dict, out_dict):
         for io in ee.findall(".camunda:in", NS):
