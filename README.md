@@ -1,5 +1,8 @@
 # A python module for parsing and executing BPMN models
 
+### Note
+Polishing as well as refactoring needed for `extra/`
+
 ## Supported BPMN elements so far:
 
 ### Start/end events
@@ -120,3 +123,4 @@ Running process 2
         [2] DOING: UserTask(Task down)
         [2] DONE
 ```
+
