@@ -80,7 +80,7 @@ class BpmnModel:
         return {
             "model_path": self.model_path,
             "main_process": self.main_process.__dict__,
-            "tasks": [
+            "user_tasks": [
                 x.to_json() for x in self.elements.values() if isinstance(x, UserTask)
             ],
             "instances": [i._id for i in self.instances.values()],
@@ -191,7 +191,6 @@ class BpmnInstance:
         queue = deque()
 
         while len(self.pending) > 0:
-
             # process incoming messages
             if not in_queue.empty():
                 queue.append(in_queue.get_nowait())

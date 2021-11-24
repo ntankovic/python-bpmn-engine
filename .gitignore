@@ -8,6 +8,9 @@ models/test_business_rule.bpmn
 models/test_dmn.dmn
 models/test_exe_dmn.dmn
 models/strucna_praksa.bpmn
+models/test_prob_dist_time.bpmn
+models/paths_xor_test.bpmn
+models/test1.bpmn
 py-bpmn-env
 database/
 env.py

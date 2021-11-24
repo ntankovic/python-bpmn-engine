@@ -7,6 +7,7 @@ from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance
 import aiohttp_cors
 import db_connector
 from functools import reduce
+from extra.time_distribution_probability import handle_time_distribution_probability
 
 # Setup database
 db_connector.setup_db()
@@ -17,9 +18,10 @@ routes = web.RouteTableDef()
 models = {}
 for file in os.listdir("models"):
     if file.endswith(".bpmn"):
-        print(file)
         m = BpmnModel(file)
         models[file] = m
+
+handle_time_distribution_probability(models["test_prob_dist_time.bpmn"])
 
 
 async def run_as_server(app):
@@ -175,6 +177,6 @@ async def serve():
     return run()
 
 
-if __name__ == "__main__":
-    app = run()
-    web.run_app(app, port=9000)
+# if __name__ == "__main__":
+#    app = run()
+#    web.run_app(app, port=8080)

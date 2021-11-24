@@ -4,9 +4,9 @@ class SafeDict(dict):
 
 
 def parse_expression(expression, process_variables):
-    if (key := expression.replace("${", "").replace("}", "")) in process_variables:
+    key = expression.replace("${", "").replace("}", "")
+    if key in process_variables:
         return process_variables[key]
-
     return expression.replace("${", "{").format_map(SafeDict(process_variables))
 
 

@@ -79,8 +79,17 @@ class SequenceFlow(BpmnObject):
 
 @bpmn_tag("bpmn:task")
 class Task(BpmnObject):
+    def __init__(self):
+        self.expected_time = {}
+
     def parse(self, element):
         super(Task, self).parse(element)
+        for p in element.findall(".//camunda:property", NS):
+            if (
+                p.attrib.get("name") == "time_mean"
+                or p.attrib.get("name") == "time_std"
+            ):
+                self.expected_time[p.attrib["name"]] = float(p.attrib["value"])
 
     def get_info(self):
         return {"type": self.tag}
@@ -112,7 +121,7 @@ class UserTask(Task):
 
             for p in f.findall(".//camunda:property", NS):
                 form_field_properties_dict[p.attrib["id"]] = parse_expression(
-                    p.attrib["value"], env.SYSTEM_VARS | env.DS
+                    p.attrib["value"], {**env.SYSTEM_VARS, **env.DS}
                 )
 
             for v in f.findall(".//camunda:constraint", NS):
@@ -237,7 +246,8 @@ class ServiceTask(Task):
         )
 
         # Check method and make request
-        if method := self.connector_fields["input_variables"].get("method"):
+        method = self.connector_fields["input_variables"].get("method")
+        if method:
             if method == "POST":
                 call_function = requests.post
             elif method == "PATCH":
@@ -336,6 +346,7 @@ class ParallelGateway(Gateway):
 class ExclusiveGateway(Gateway):
     def __init__(self):
         self.default = False
+        self.decision_outcome = None
         super(ExclusiveGateway, self).__init__()
 
     def parse(self, element):
@@ -343,3 +354,6 @@ class ExclusiveGateway(Gateway):
             element.attrib["default"] if "default" in element.attrib else None
         )
         super(ExclusiveGateway, self).parse(element)
+        for p in element.findall(".//camunda:property", NS):
+            if p.attrib.get("name"):
+                self.decision_outcome = [float(x) for x in p.attrib["value"].split(",")]
