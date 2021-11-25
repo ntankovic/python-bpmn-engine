@@ -31,10 +31,11 @@ def plot_parreto_front_with_previous_solutions(processes, previous_processes):
         previous_time.append(total_time(process))
         previous_cost.append(total_cost(process))
 
-    plt.scatter(previous_time,previous_cost, color = "lightgreen")
-    plt.scatter(timeAxis,costAxis, color = "red")
+    previous = plt.scatter(previous_time,previous_cost, color = "lightgreen", s=10)
+    final = plt.scatter(timeAxis,costAxis, color = "blue", s=15)
     plt.xlabel("Time")
     plt.ylabel("Cost")
+    plt.legend([previous, final],["Previous generetions","Final generation"])
     plt.title("Pareto with previous generations from BPMN")
     plt.show()
         
@@ -202,6 +203,7 @@ def single_point_crossover(parent_one, parent_two):
 
 def mutation(child):
     for task in child: 
+        #There is 0.5 probability that task in process will mutate
         if random.uniform(0.0,1.0) < 0.5:
             cluster_types = [0,1,2,3]
             cluster_types.pop(task.cluster_type)
@@ -229,11 +231,11 @@ def generate_offspring_population(parent_population, objective_scores_for_soluti
         new_generation.extend(children)
     return new_generation
 
-def run_nsga2(tasks_mean_duration):
+def run(tasks_mean_duration, population_size=35, generations=50, plot=True):
     tasks_durations = tasks_mean_duration
     process_size = len(tasks_durations)
-    population_size = 100
-    number_of_generations = 100
+    population_size = population_size
+    generations = generations
 
     mean_tasks_duration_on_normal_clusters = sum(tasks_durations)
     mean_tasks_cost_on_normal_clusters = sum(tasks_durations) * 0.086
@@ -250,15 +252,15 @@ def run_nsga2(tasks_mean_duration):
             process_tasks.append(Task(tasks_durations[i], random.choice([0,1,2,3])))
         solutions.append(process_tasks)
 
-    #Diagnostics
+    #Colletion of previous solutions for plot
     previous_solutions = []
 
     #Start Timer
     start = time.time()
     #Standard optimization loop
-    for j in tqdm(range(number_of_generations)):
+    for j in tqdm(range(generations)):
         #Diagnostics
-        if j != number_of_generations - 1:
+        if j != generations - 1:
             previous_solutions.extend(solutions)
 
         #Generate objective score for each member of population -> save to dict for easy accessing
@@ -333,19 +335,32 @@ def run_nsga2(tasks_mean_duration):
     #End Timer
     end = time.time() - start
 
-    fronts_by_level[1] = sorted(fronts_by_level[1])
-    print("Total time for last solution on pareto front from parent population : ", total_time(objective_scores_for_solutions[fronts_by_level[1][-1]]))
-    print("Total cost for last solution on pareto front from parent population : ", total_cost(objective_scores_for_solutions[fronts_by_level[1][-1]]))
-    from collections import Counter
-    cluster_list = []
-    for task in objective_scores_for_solutions[fronts_by_level[1][-1]]:
-        cluster_list.append(task.cluster_type)
-    print("Clusters for last solution on pareto front from parent population: ", Counter(cluster_list))
-    #print(solutions)
+    #Diagnostics
+    #fronts_by_level[1] = sorted(fronts_by_level[1])
+    #print("Total time for last solution on pareto front from parent population : ", total_time(objective_scores_for_solutions[fronts_by_level[1][-1]]))
+    #print("Total cost for last solution on pareto front from parent population : ", total_cost(objective_scores_for_solutions[fronts_by_level[1][-1]]))
+    #from collections import Counter
+    #cluster_list = []
+    #for task in objective_scores_for_solutions[fronts_by_level[1][-1]]:
+    #    cluster_list.append(task.cluster_type)
+    #print("Clusters for last solution on pareto front from parent population: ", Counter(cluster_list))
 
     print("Time for NSGA2: ", end)
     #plot_parreto_front(solutions)
-    plot_parreto_front_with_previous_solutions(solutions, previous_solutions)
+
+    #Diagnostics
+    #cluster_list = []
+    #for i in range(0,len(fronts_by_level[1])):
+    #    if total_time(objective_scores_for_solutions[fronts_by_level[1][i]]) < 270 and total_time(objective_scores_for_solutions[fronts_by_level[1][i]])>262:
+    #        for t in objective_scores_for_solutions[fronts_by_level[1][i]]:
+    #            cluster_list.append(t.cluster_type)
+    #        print(Counter(cluster_list))
+    #        cluster_list = []
+
+    if plot:
+        plot_parreto_front_with_previous_solutions(solutions, previous_solutions)
+
+    return solutions
 
 
 
