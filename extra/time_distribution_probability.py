@@ -1,5 +1,4 @@
 import bpmn_types
-from .nsga2 import run_nsga2
 from ._utils import calculate_gamma_shape, calculate_gamma_scale
 from copy import deepcopy
 from collections import OrderedDict, defaultdict
@@ -32,6 +31,8 @@ class SimulationDAG():
         self.xor_path_samples_dictionary = defaultdict(list)
         #Temporary storage of tasks for optmization
         self.tasks_for_optimization = []
+        #Temporary storage of tasks ids for optimization
+        self.tasks_ids_for_optimization = []
 
         flows = deepcopy(model.flow)
         pending_copy = deepcopy(model.pending)
@@ -64,6 +65,7 @@ class SimulationDAG():
                 if isinstance(c, bpmn_types.Task):
                     #Temporary solution -> needed for optimization
                     self.tasks_for_optimization.append(c.expected_time["time_mean"])
+                    self.tasks_ids_for_optimization.append(c._id)
                     #Calculating shape and scale is specific to Gamma distr
                     #In the future more general approach should be taken
                     shape = calculate_gamma_shape(c.expected_time["time_mean"],c.expected_time["time_std"])
@@ -211,7 +213,7 @@ class SimulationDAG():
         
         return self.total
         
-    def find_path_given_duration_constraint(self, start, end):
+    def find_path_given_duration_constraint(self, start, end, json=False):
         """
         return : path with highest sample size in range
                 "start <= total time distribution <= end"
@@ -225,7 +227,7 @@ class SimulationDAG():
         for key in self.all_tasks_duration_dict:
             if isinstance(key, bpmn_types.ExclusiveGateway):
                 print(f"Handling {key}")
-                possible_paths_for_xor[key] = self.find_all_possible_paths(key)
+                possible_paths_for_xor[key] = self._find_all_possible_paths(key)
 
         path_counter = 0
         all_possible_paths[path_counter] = []
@@ -279,10 +281,18 @@ class SimulationDAG():
         if winner_path is not None:
             print(f"Path in range {start}-{end}")
             print(total_tasks_for_each_path[winner_path])
-            return total_tasks_for_each_path[winner_path]
+            if json:
+                return [t._id for t in total_tasks_for_each_path[winner_path]]
+            else:
+                return total_tasks_for_each_path[winner_path]
         else:
-            print("No paths in given duration constraint")
-            return None
+            raise NoPathsInGivenConstraint(start,end)
+
+    def get_tasks_for_optimization(self):
+        return self.tasks_for_optimization
+    
+    def get_tasks_ids_for_optimization(self):
+        return self.tasks_ids_for_optimization
 
     def _handle_complex_paths(
         self, gateway_dict, gateway, xor_possible_paths_samples=None
@@ -365,7 +375,7 @@ class SimulationDAG():
 
         return complex_mix_sample
 
-    def find_all_possible_paths(self, gateway):
+    def _find_all_possible_paths(self, gateway):
         """
         Create all possible paths task duration from final all_task_duration_dict.
         This is used in case there is single or multiple XOR gateways in final all_task_duration_dict.
@@ -386,7 +396,7 @@ class SimulationDAG():
                 if not isinstance(p, bpmn_types.ExclusiveGateway):
                     all_possible_paths_tasks_duration[path_counter].append({p : self.xor_path_samples_dictionary[gateway][sample_location]})
                 else:
-                    possible_paths_in_xor = self.find_all_possible_paths(p)
+                    possible_paths_in_xor = self._find_all_possible_paths(p)
                     path_until_xor  = all_possible_paths_tasks_duration[path_counter]
                     for key, value in possible_paths_in_xor.items():
                         all_possible_paths_tasks_duration[path_counter] = []
@@ -400,10 +410,7 @@ class SimulationDAG():
         print(f"Possible paths : {len(all_possible_paths_tasks_duration.keys())}")
         
         return all_possible_paths_tasks_duration
-    
-    def get_tasks_for_optimization(self):
-        return self.tasks_for_optimization
-
+   
     def _find_opened_gateway_for_current(self, merged_path_dict, current):
         print("*" * 10)
         print(f"Find open gateway for {current} :")
@@ -496,5 +503,13 @@ class SimulationDAG():
 
 class BpmnModelIsNotDAG(Exception):
     def __init__(self, element):
-        message = f"{element} may be activated more then once during execution!"
-        super().__init__(message)
+        self.element = element._id
+    def __str__(self):
+        return f"{self.element} may be activated more then once during execution!"
+
+class NoPathsInGivenConstraint(Exception):
+    def __init__(self, start, end): 
+        self.start = start
+        self.end = end
+    def __str__(self):
+        return f"There are no paths in total for given range {self.start} - {self.end}"

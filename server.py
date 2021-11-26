@@ -7,7 +7,9 @@ from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance
 import aiohttp_cors
 import db_connector
 from functools import reduce
-from extra.time_distribution_probability import handle_time_distribution_probability
+from extra.time_distribution_probability import SimulationDAG 
+import extra.nsga2 as nsga2
+import re
 
 # Setup database
 db_connector.setup_db()
@@ -15,13 +17,15 @@ routes = web.RouteTableDef()
 
 # uuid4 = lambda: 2  # hardcoded for easy testing
 
+#DAG simulation storage -> model_name : simulation object
+#Note for future -> store in database
+dag_storage = {}
+
 models = {}
 for file in os.listdir("models"):
     if file.endswith(".bpmn"):
         m = BpmnModel(file)
         models[file] = m
-
-handle_time_distribution_probability(models["test_prob_dist_time.bpmn"])
 
 
 async def run_as_server(app):
@@ -59,6 +63,52 @@ async def handle_new_instance(request):
     asyncio.create_task(instance.run())
     return web.json_response({"id": _id})
 
+@routes.post("/simulation/dag/model/{model_name}")
+async def handle_new_dag_simulation(request):
+    model_name = request.match_info.get("model_name")
+    try:
+        dag_simulation = SimulationDAG(app["bpmn_models"][model_name])
+        dag_storage[model_name] = dag_simulation
+        return web.json_response({"status":"OK"})
+    except Exception as e:
+        return web.json_response({"error":type(e).__name__ ,"error_message":str(e)})
+
+@routes.get("/simulation/dag/model/{model_name}/total")
+async def get_dag_simulation_total_distribution(request):
+    model_name = request.match_info.get("model_name")
+    try:
+        total = dag_storage[model_name].create_total_distribution(plot=False)
+        #Numpy array needs to be converted to list to be sent as JSON response
+        total = total.tolist()
+        return web.json_response({"status":"OK", "results":total})
+    except Exception as e:
+        return default_simulation_error_handler(e)
+
+@routes.get("/simulation/dag/model/{model_name}/total/path/in")
+async def get_path_given_constraint(request):
+    params = dict(request.query)
+    model_name = request.match_info.get("model_name")
+    try:
+        start = int(params["start"])
+        end = int(params["end"])
+        path = dag_storage[model_name].find_path_given_duration_constraint(start, end, json=True)
+        return web.json_response({"status":"OK", "results":path})
+    except Exception as e:
+        return default_simulation_error_handler(e)
+
+@routes.get("/simulation/dag/model/{model_name}/nsga2")
+async def handle_nsga2_optimization_solutions_for_dag(request):
+    params = dict(request.query)
+    model_name = request.match_info.get("model_name")
+    try:
+        tasks_mean_duration = dag_storage[model_name].get_tasks_for_optimization()
+        tasks_ids = dag_storage[model_name].tasks_ids_for_optimization
+        population_size = int(params["population_size"]) if "population_size" in params else 35
+        generations = int(params["generations"]) if "generations" in params else 50 
+        solutions = nsga2.run(tasks_mean_duration, tasks_ids, population_size, generations, plot=False, json=True)
+        return web.json_response({"status":"OK", "results": solutions})
+    except Exception as e:
+        return default_simulation_error_handler(e)
 
 @routes.post("/instance/{instance_id}/task/{task_id}/form")
 async def handle_form(request):
@@ -146,6 +196,14 @@ async def handle_instance_info(request):
     return web.json_response(instance)
 
 
+def default_simulation_error_handler(e):
+    if isinstance(e,KeyError) and re.match(".*\.bpmn",str(e)):
+        error_m = f"Simulation for {str(e)} is not instantiated!" 
+        return web.json_response({"error":type(e).__name__ ,"error_message":str(error_m)})
+    else:
+        return web.json_response({"error":type(e).__name__ ,"error_message":str(e)})
+
+
 app = None
 
 
@@ -177,6 +235,6 @@ async def serve():
     return run()
 
 
-# if __name__ == "__main__":
-#    app = run()
-#    web.run_app(app, port=8080)
+if __name__ == "__main__":
+    app = run()
+    web.run_app(app, port=8080)

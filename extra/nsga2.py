@@ -6,6 +6,7 @@ from collections import defaultdict
 import time
 from tqdm import tqdm
 from copy import deepcopy
+import json
 
 def plot_parreto_front(processes):
     timeAxis = []
@@ -231,8 +232,9 @@ def generate_offspring_population(parent_population, objective_scores_for_soluti
         new_generation.extend(children)
     return new_generation
 
-def run(tasks_mean_duration, population_size=35, generations=50, plot=True):
+def run(tasks_mean_duration, tasks_ids, population_size=35, generations=50, plot=True, json=False):
     tasks_durations = tasks_mean_duration
+    tasks_ids = tasks_ids
     process_size = len(tasks_durations)
     population_size = population_size
     generations = generations
@@ -249,7 +251,7 @@ def run(tasks_mean_duration, population_size=35, generations=50, plot=True):
     for s in range(population_size):
         process_tasks = []
         for i in range(process_size):
-            process_tasks.append(Task(tasks_durations[i], random.choice([0,1,2,3])))
+            process_tasks.append(Task(tasks_durations[i], random.choice([0,1,2,3]), tasks_ids[i]))
         solutions.append(process_tasks)
 
     #Colletion of previous solutions for plot
@@ -359,8 +361,29 @@ def run(tasks_mean_duration, population_size=35, generations=50, plot=True):
 
     if plot:
         plot_parreto_front_with_previous_solutions(solutions, previous_solutions)
+    if json:
+        return convert_solutions_to_json(solutions)
+    else:
+        return solutions
 
-    return solutions
-
-
+def convert_solutions_to_json(solutions):
+    """
+    Converts solutions to json so they can be displayed on frontend.
+    In the future this function should be objective function agnostic.
+    """
+    json_solutions = {}
+    json_solutions["solutions"] = []
+    for solution in solutions:
+        s = {}
+        solution_time = total_time(solution)
+        solution_cost = total_cost(solution)
+        tasks_list = []
+        for task in solution:
+            tasks_list.append(json.dumps(task.__dict__))
+        s["time"] = solution_time
+        s["cost"] = solution_cost
+        s["tasks_list"] = tasks_list
+        json_solutions["solutions"].append(s)
+    return json_solutions
+        
 

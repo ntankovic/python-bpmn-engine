@@ -1,7 +1,8 @@
 class Task():
-    def __init__(self, mean_time, cluster_type):
+    def __init__(self, mean_time, cluster_type, task_id):
         self.mean_time = mean_time
         self.cluster_type = cluster_type
+        self.task_id = task_id
     def calculate_time_based_on_cluster(self):
         #Starting cluster takes 20min ~= 0.3h
         cluster_starting_time = 0.3
