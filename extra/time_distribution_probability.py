@@ -1,5 +1,5 @@
-import bpmn_types
-from ._utils import calculate_gamma_shape, calculate_gamma_scale
+from _utils import calculate_gamma_shape, calculate_gamma_scale
+import extra_errors
 from copy import deepcopy
 from collections import OrderedDict, defaultdict
 from functools import reduce
@@ -7,6 +7,12 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
+import sys
+import os
+#Get parent path so it's possible to import modules from parent directory
+parent_path = os.path.abspath(os.path.split(sys.argv[0])[0]) + "/../"
+sys.path.append(parent_path)
+import bpmn_types
 
 #New way to use numpy random
 numpy_random = np.random.default_rng()
@@ -165,7 +171,7 @@ class SimulationDAG():
                     pending_copy.append(x)
                 else:
                     #If element already exits in history -> != DAG
-                    raise BpmnModelIsNotDAG(x)
+                    raise extra_errors.BpmnModelIsNotDAG(x)
 
     def create_total_distribution(self, plot=True):
         #Check if total already exitst and if it does just return it
@@ -286,7 +292,7 @@ class SimulationDAG():
             else:
                 return total_tasks_for_each_path[winner_path]
         else:
-            raise NoPathsInGivenConstraint(start,end)
+            raise extra_errors.NoPathsInGivenConstraint(start,end)
 
     def get_tasks_for_optimization(self):
         return self.tasks_for_optimization
@@ -500,16 +506,3 @@ class SimulationDAG():
         plt.hist(samples, bins="auto",color="green")
         plt.show()
 
-
-class BpmnModelIsNotDAG(Exception):
-    def __init__(self, element):
-        self.element = element._id
-    def __str__(self):
-        return f"{self.element} may be activated more then once during execution!"
-
-class NoPathsInGivenConstraint(Exception):
-    def __init__(self, start, end): 
-        self.start = start
-        self.end = end
-    def __str__(self):
-        return f"There are no paths in total for given range {self.start} - {self.end}"

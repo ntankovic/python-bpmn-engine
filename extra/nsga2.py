@@ -1,4 +1,4 @@
-from .task import Task, total_cost, total_time
+from task import Task, total_cost, total_time
 import numpy as np
 import random
 import matplotlib.pyplot as plt
@@ -53,25 +53,18 @@ def objective_function(process):
 
 def check_mathematical_domination(x1,x2):
     """
-    https://en.wikipedia.org/wiki/Multi-objective_optimization
     Condition 1: x(1) is no worse than x(2) for all objectives
     Condition 2: x(1) is strictly better than x(2) in at least one objective
     """
-    condition_one_objectives = []
     for pos,objective in enumerate(x1):
-        if objective <= x2[pos]:
-            condition_one_objectives.append(True)
-        else:
-            condition_one_objectives.append(False)
-    if all(condition_one_objectives):
-        for pos,objective in enumerate(x1):
-            if objective < x2[pos]:
-                return True
-        #Condition 2 not met
-        return False
-    else:
-        #Condition 1 not met
-        return False
+        if objective > x2[pos]:
+            #Condition 1 not met
+            return False
+    for pos,objective in enumerate(x1):
+        if objective < x2[pos]:
+            return True
+    #Condition 2 not met
+    return False
 
 def fast_non_dominated_sorting(population):
     #Sorted fronts by level -> we return this
