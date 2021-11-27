@@ -17,7 +17,9 @@ routes = web.RouteTableDef()
 dag_storage = {}
 
 models = {}
-for file in os.listdir("models"):
+
+models_directory = parent_path+"models/"
+for file in os.listdir(models_directory):
     if file.endswith(".bpmn"):
         m = BpmnModel(file)
         models[file] = m

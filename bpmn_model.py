@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import sys
 import xml.etree.ElementTree as ET
 from bpmn_types import *
 from pprint import pprint
@@ -38,7 +39,9 @@ class BpmnModel:
         self.subprocesses = {}
         self.main_process = SimpleNamespace()
 
-        model_tree = ET.parse(os.path.join("models", self.model_path))
+        models_directory = os.path.dirname(__file__)+"/models"
+
+        model_tree = ET.parse(os.path.join(models_directory, self.model_path))
         model_root = model_tree.getroot()
         processes = model_root.findall("bpmn:process", NS)
         for process in processes:
@@ -103,7 +106,7 @@ class BpmnModel:
 
     # Takes model_path needed for deployed subprocess
     def handle_deployment_subprocesses(self):
-        models_directory = "models/"
+        models_directory = os.path.dirname(__file__)+"/models"
 
         other_models_list = []
 
