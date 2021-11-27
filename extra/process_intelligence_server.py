@@ -6,7 +6,7 @@ import re
 import sys
 import os
 #Get parent path so it's possible to import modules from parent directory
-parent_path = os.path.abspath(os.path.split(sys.argv[0])[0]) + "/../"
+parent_path = os.path.dirname(__file__) + "/../" 
 sys.path.append(parent_path)
 from bpmn_model import BpmnModel
 
