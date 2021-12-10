@@ -397,7 +397,18 @@ class SimulationDAG():
             all_possible_paths_tasks_duration[path_counter] = []
             for p in path:
                 if not isinstance(p, bpmn_types.ExclusiveGateway):
-                    all_possible_paths_tasks_duration[path_counter].append({p : self.xor_path_samples_dictionary[gateway][sample_location]})
+                    #At the moment Events are ignored since they don't have
+                    #distribution associated with them. In the future this 
+                    #if statement should be removed and Events should be handled
+                    #same as Tasks
+                    print(p)
+                    print(self.xor_path_samples_dictionary[gateway][sample_location])
+                    if isinstance(p, bpmn_types.Event):
+                        all_possible_paths_tasks_duration[path_counter].append({p : np.zeros(shape=SAMPLE_SIZE)})
+                        #This is so that Event doesn't mess up order...
+                        sample_location -= 1
+                    else:
+                        all_possible_paths_tasks_duration[path_counter].append({p : self.xor_path_samples_dictionary[gateway][sample_location]})
                 else:
                     possible_paths_in_xor = self._find_all_possible_paths(p)
                     path_until_xor  = all_possible_paths_tasks_duration[path_counter]

@@ -253,9 +253,9 @@ def run(tasks_mean_duration, tasks_ids, population_size=35, generations=50, plot
     #Start Timer
     start = time.time()
     #Standard optimization loop
-    for j in tqdm(range(generations)):
+    for gen in tqdm(range(generations)):
         #Diagnostics
-        if j != generations - 1:
+        if gen != generations - 1:
             previous_solutions.extend(solutions)
 
         #Generate objective score for each member of population -> save to dict for easy accessing
@@ -288,8 +288,18 @@ def run(tasks_mean_duration, tasks_ids, population_size=35, generations=50, plot
             current_front = fronts_by_level[front_level]
             #For debugging purposes, this should never happen
             if len(current_front) == 0:
-                print(front_level)
-                raise ValueError("Not good -> length of current front is 0")
+                #This is possible to happen if the search space is small, e.g.
+                #small number of tasks in process, for the first generation this
+                #is acceptable so we just continue with smaller population size
+                #which will get back to desired size in the second generation
+                if gen==0:
+                    break
+                else:
+                    print("Current front :", front_level)
+                    print("Population on front :", len(fronts_by_level[front_level]))
+                    print("Parent population :", len(parent_population))
+                    print("Population size :", population_size)
+                    raise ValueError("Not good -> length of current front is 0")
             #Calculate crowding distance for all individuals in current front
             distances = {**distances,**crowding_distance_assigment(current_front)}
             #Add all solutions from current front to parent population
@@ -304,8 +314,9 @@ def run(tasks_mean_duration, tasks_ids, population_size=35, generations=50, plot
         
         #Reassign new level to current front
         current_front = fronts_by_level[front_level]
-        #If parent population is less then population size
-        if (population_size - len(parent_population)) > 0:  
+        #If parent population is less then population size and it's not the 
+        #first generation
+        if (population_size - len(parent_population)) > 0 and gen != 0:
             #Calculate distances for last front
             distances = {**distances,**crowding_distance_assigment(current_front)}
             #Sort last front by Crowded-Comparison operator.
