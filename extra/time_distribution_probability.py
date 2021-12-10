@@ -119,20 +119,20 @@ class SimulationDAG():
                             # Else -> target Gateway is closing XOR/AND
                             else:
                                 self._handle_closing_target_gateway(c, target)
-                    #Logic for handling target if it's Task
-                    elif isinstance(target, bpmn_types.Task):
-                        #If current is Gateway, add Task to a corresponding
-                        #Gateway dictionary
+                    #Logic for handling target if it's Task or Event
+                    else: 
+                        #If current is Gateway, add Task or Event to a
+                        #corresponding Gateway dictionary
                         if isinstance(c, bpmn_types.ExclusiveGateway):
                             self.xor_paths_dict[c][target] = []
                             self.xor_paths_dict[c][target].append(target)
                         if isinstance(c, bpmn_types.ParallelGateway):
                             self.and_paths_dict[c][target] = []
                             self.and_paths_dict[c][target].append(target)
-                        #If current is Task, find to which gateway and path 
-                        #current belongs to and if they exists append target
-                        #task to it.
-                        if isinstance(c, bpmn_types.Task):
+                        #If current is Task or Event, find to which gateway and 
+                        #path current belongs to and if they exists append 
+                        #target task to it.
+                        if isinstance(c, bpmn_types.Task) or isinstance(c, bpmn_types.Event):
                             correct_gateway_and_path = self._find_correct_gateway_and_path(
                                 {**self.xor_paths_dict, **self.and_paths_dict}, c
                             )
@@ -150,12 +150,6 @@ class SimulationDAG():
                                     ].append(target)
                         if target not in helper_pending:
                             helper_pending.append(target)
-                    #If the target is not Task or Gateway, just add it to
-                    #helper pending if it does not exists.
-                    else:
-                        if target not in helper_pending:
-                            helper_pending.append(target)
-                    # Check if more then 1 flow
                     if len(flows[c._id]) > 1:
                         if isinstance(c, bpmn_types.ExclusiveGateway):
                             #If more then 1 flow and XOR Gateway, add paths
@@ -332,6 +326,9 @@ class SimulationDAG():
                     )
                 elif isinstance(p, bpmn_types.Task):
                     task_time = self.all_tasks_duration_dict[p]
+                elif isinstance(p, bpmn_types.Event):
+                    #Placeholder for when we start handling Events
+                    continue
                 del self.all_tasks_duration_dict[p]
                 if len(task_time) != 0:
                     single_path_time.append(task_time)

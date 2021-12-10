@@ -324,6 +324,9 @@ class StartEvent(Event):
 class EndEvent(Event):
     pass
 
+@bpmn_tag("bpmn:intermediateThrowEvent")
+class IntermediateThrowEvent(Event):
+    pass
 
 @bpmn_tag("bpmn:gateway")
 class Gateway(BpmnObject):
