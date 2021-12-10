@@ -1,7 +1,7 @@
 # A python module for parsing and executing BPMN models
 
 ### Note
-Polishing as well as refactoring needed for `extra/`
+`extra/` is still in development and components inside haven't been tested yet for each possible use case.
 
 ## Supported BPMN elements so far:
 
