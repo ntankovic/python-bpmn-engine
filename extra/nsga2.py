@@ -199,7 +199,7 @@ def mutation(child):
     for task in child: 
         #There is 0.5 probability that task in process will mutate
         if random.uniform(0.0,1.0) < 0.5:
-            cluster_types = [0,1,2,3]
+            cluster_types = [0,1,2,3,4,5,6,7]
             cluster_types.pop(task.cluster_type)
             task.cluster_type = random.choice(cluster_types)
     return child
@@ -244,7 +244,7 @@ def run(tasks_mean_duration, tasks_ids, population_size=35, generations=50, plot
     for s in range(population_size):
         process_tasks = []
         for i in range(process_size):
-            process_tasks.append(Task(tasks_durations[i], random.choice([0,1,2,3]), tasks_ids[i]))
+            process_tasks.append(Task(tasks_durations[i], random.choice([0,1,2,3,4,5,6,7]), tasks_ids[i]))
         solutions.append(process_tasks)
 
     #Colletion of previous solutions for plot

@@ -121,14 +121,10 @@ class SimulationDAG():
                                 self._handle_closing_target_gateway(c, target)
                     #Logic for handling target if it's Task or Event
                     else: 
-                        #If current is Gateway, add Task or Event to a
-                        #corresponding Gateway dictionary
-                        if isinstance(c, bpmn_types.ExclusiveGateway):
-                            self.xor_paths_dict[c][target] = []
-                            self.xor_paths_dict[c][target].append(target)
-                        if isinstance(c, bpmn_types.ParallelGateway):
-                            self.and_paths_dict[c][target] = []
-                            self.and_paths_dict[c][target].append(target)
+                        #If current is Gateway AND it's not closing gateway, add 
+                        #Task or Event to a corresponding Gateway dictionary
+                        if isinstance(c, bpmn_types.Gateway) and c not in {**self.closing_to_opening_xor_dict,**self.closing_to_opening_and_dict}:
+                            self._add_target_into_current_gateway_path(c, target)
                         #If current is Task or Event, find to which gateway and 
                         #path current belongs to and if they exists append 
                         #target task to it.
@@ -136,7 +132,6 @@ class SimulationDAG():
                             correct_gateway_and_path = self._find_correct_gateway_and_path(
                                 {**self.xor_paths_dict, **self.and_paths_dict}, c
                             )
-                            print("Correct gateway : ", correct_gateway_and_path)
                             if correct_gateway_and_path:
                                 if isinstance(
                                     correct_gateway_and_path[0], bpmn_types.ExclusiveGateway
@@ -154,8 +149,13 @@ class SimulationDAG():
                         if isinstance(c, bpmn_types.ExclusiveGateway):
                             #If more then 1 flow and XOR Gateway, add paths
                             #probabilities to its dictionary
-                            print("Decision outcome for ", c, " : ", c.decision_outcome)
-                            self.path_probability_xor_dict[target] = c.decision_outcome[index]
+                            try:
+                                print(f"From {c} decision outcome for {target} :  {c.decision_outcome[index]}")
+                                self.path_probability_xor_dict[c][target] = c.decision_outcome[index]
+                            except:
+                                self.path_probability_xor_dict[c] = {}
+                                self.path_probability_xor_dict[c][target] = c.decision_outcome[index]
+
 
             #Create fresh pending copy for next iteration
             pending_copy = []
@@ -166,6 +166,30 @@ class SimulationDAG():
                 else:
                     #If element already exits in history -> != DAG
                     raise extra_errors.BpmnModelIsNotDAG(x)
+
+        #Diagnostics
+        print("-" * 50)
+        print("All tasks duration dict : ")
+        print(self.all_tasks_duration_dict)
+        print("-" * 50)
+        print("XOR paths dict : ")
+        print(self.xor_paths_dict)
+        print("-" * 50)
+        print("Path probability xor dict : ")
+        print(self.path_probability_xor_dict)
+        print("-" * 50)
+        print("AND paths dict : ")
+        print(self.and_paths_dict)
+        print("-" * 50)
+        print("Incoming gateway dict : ")
+        print(helper_incoming_gateway_dict)
+        print("-" * 50)
+        print("Closing to opening XOR dict : ")
+        print(self.closing_to_opening_xor_dict)
+        print("-" * 50)
+        print("Closing to opening AND dict : ")
+        print(self.closing_to_opening_and_dict)
+        print("-" * 50)
 
     def create_total_distribution(self, plot=True):
         #Check if total already exitst and if it does just return it
@@ -182,7 +206,7 @@ class SimulationDAG():
        
         # Handle complex gateways  
         for i, gateway in enumerate(ordered_gateway_list):
-            print(gateway)
+            print("Total distribution call for ",gateway)
             #Get task time for complex gateway
             task_time = self._handle_complex_paths(
                 {**self.xor_paths_dict,**self.and_paths_dict},
@@ -312,17 +336,15 @@ class SimulationDAG():
         
         path_dict = gateway_dict[gateway]
 
+        print("Handling Complex Gateway : ",gateway)
         print("Path dictionary : ",path_dict)
         for key, path in path_dict.items():
             single_path_time = []
             for p in path:
-                if isinstance(p, bpmn_types.ExclusiveGateway):
+                print("P : ",p)
+                if isinstance(p, bpmn_types.Gateway):
                     task_time = self._handle_complex_paths(
                         gateway_dict, p, xor_possible_paths_samples
-                    )
-                elif isinstance(p, bpmn_types.ParallelGateway):
-                    task_time = self._handle_complex_paths(
-                        gateway_dict, p
                     )
                 elif isinstance(p, bpmn_types.Task):
                     task_time = self.all_tasks_duration_dict[p]
@@ -337,7 +359,7 @@ class SimulationDAG():
             sum_of_single_path_time = sum(single_path_time)
             all_paths_time_ordered.append(sum_of_single_path_time)
             if isinstance(gateway, bpmn_types.ExclusiveGateway):
-                paths_probability_ordered.append(self.path_probability_xor_dict[key])
+                paths_probability_ordered.append(self.path_probability_xor_dict[gateway][key])
                 #Add single path to possible paths dictionary for that gateway
                 xor_possible_paths_samples[gateway].extend(single_path_time)
 
@@ -346,7 +368,7 @@ class SimulationDAG():
             print(f"Handling {gateway}")
             #Check if probabilities == 1.0
             if sum(paths_probability_ordered) != 1.0:
-                raise ValueError("Sum of all paths probabilites for specific XOR gateway must be 1.0")
+                raise ValueError(f"Sum of all paths probabilites for specific XOR gateway must be 1.0, recived : {paths_probability_ordered}")
             #List for mixed sample
             complex_mix_sample = []
             #Take random samples from distributions with size based on its probability
@@ -430,24 +452,31 @@ class SimulationDAG():
             for path, path_list in path_dict.items():
                 for p in path_list:
                     if current == p:
-                        print(f"Opened XOR is {gateway}")
+                        print(f"Opened Gateway is {gateway}")
                         return gateway
 
 
     def _find_correct_gateway_and_path(self, merged_path_dict, current):
         print("*" * 10)
-        print("Find correct gateway and path:")
+        print(f"Find correct gateway and path for {current}:")
         for gateway, path_dict in merged_path_dict.items():
             for path, path_list in path_dict.items():
                 for p in path_list:
                     if current == p:
-                        print(f"Current {current} == {p} p ")
-                        print("Just check : ", merged_path_dict[gateway][path])
+                        print(f"Correct gateway and path: {gateway} and {path}")
                         return [gateway, path]
     
     def _handle_opening_target_gateway(self, c, target):
+        print(f"Handling opening gateway: {target}")
         #Add placeholder for all tasks inside gateway
         self.all_tasks_duration_dict[target] = None
+        #If current is Gateway AND it's not closing gateway
+        #Add target Gateway to a corresponding current Gateway path dictionary
+        if isinstance(c, bpmn_types.Gateway) and c not in {**self.closing_to_opening_xor_dict,**self.closing_to_opening_and_dict}:
+            self._add_target_into_current_gateway_path(c, target)
+            #Since we added target Gateway to currents Gateway path we can 
+            #safely return and not continue with the rest of the function.
+            return
         #Find correct gateway inside self.xor_paths_dict
         #and self.and_paths_dict
         correct_gateway_and_path = self._find_correct_gateway_and_path(
@@ -472,6 +501,7 @@ class SimulationDAG():
 
 
     def _handle_closing_target_gateway(self, c, target):
+        print(f"Handling closing gateway {target}")
         #If current element is also Gateway that means
         #that current element is also closing XOR/AND
         if isinstance(c, bpmn_types.Gateway):
@@ -479,12 +509,14 @@ class SimulationDAG():
             #current(closing) gateway using its opening
             #gateway. If this is the case current is 
             #nested gateway.
+            opening_gateway_for_current = {**self.closing_to_opening_xor_dict,**self.closing_to_opening_and_dict}[c]
             opened_gateway_for_this_path = (
                 self._find_opened_gateway_for_current(
                     {**self.xor_paths_dict, **self.and_paths_dict},
-                    self.closing_to_opening_xor_dict[c],
+                    opening_gateway_for_current 
                 )
             )
+            self._map_closing_to_opening_gateway(target,opened_gateway_for_this_path)
         else:
             #If current element is not gateway trace 
             #back its opening gateway
@@ -493,20 +525,26 @@ class SimulationDAG():
                     {**self.xor_paths_dict, **self.and_paths_dict}, c
                 )
             )
+            self._map_closing_to_opening_gateway(target,opened_gateway_for_this_path)
+
+    def _map_closing_to_opening_gateway(self, target, opened_gateway_for_path):
         #Map closing target Gateway to its opening
         #gateway
-        if isinstance(
-            opened_gateway_for_this_path,
-            bpmn_types.ExclusiveGateway,
-        ):
-            self.closing_to_opening_xor_dict[
-                target
-            ] = opened_gateway_for_this_path
+        print(f"Mapping {target} to {opened_gateway_for_path}")
+        if isinstance(opened_gateway_for_path,bpmn_types.ExclusiveGateway):
+            self.closing_to_opening_xor_dict[target] = opened_gateway_for_path
         else:
-            self.closing_to_opening_and_dict[
-                target
-            ] = opened_gateway_for_this_path
+            self.closing_to_opening_and_dict[target] = opened_gateway_for_path
 
+
+    def _add_target_into_current_gateway_path(self, current, target):
+        print(f"Adding {target} to {current} path")
+        if isinstance(current, bpmn_types.ExclusiveGateway):
+            self.xor_paths_dict[current][target] = []
+            self.xor_paths_dict[current][target].append(target)
+        if isinstance(current, bpmn_types.ParallelGateway):
+            self.and_paths_dict[current][target] = []
+            self.and_paths_dict[current][target].append(target)
 
     def _plot_distribution(self, samples):
         plt.hist(samples, bins="auto",color="green")
