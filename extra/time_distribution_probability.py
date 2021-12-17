@@ -1,8 +1,7 @@
-from _utils import calculate_gamma_shape, calculate_gamma_scale
+import _utils 
 import extra_errors
 from copy import deepcopy
 from collections import OrderedDict, defaultdict
-from functools import reduce
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,13 +13,9 @@ parent_path = os.path.abspath(os.path.split(sys.argv[0])[0]) + "/../"
 sys.path.append(parent_path)
 import bpmn_types
 
-#New way to use numpy random
-numpy_random = np.random.default_rng()
-
+#In the future updates, this parametar will be set within SimlationDAG class
 SAMPLE_SIZE = 1000000
-DISTRIBUTION = numpy_random.gamma
 
-    
 class SimulationDAG():
     def __init__(self, model):
         #Contains total distribution samples
@@ -69,18 +64,12 @@ class SimulationDAG():
                 print("CURRENT TASK : ", c)
                                 
                 if isinstance(c, bpmn_types.Task):
-                    #Temporary solution -> needed for optimization
-                    self.tasks_for_optimization.append(c.expected_time["time_mean"])
-                    self.tasks_ids_for_optimization.append(c._id)
-                    #Calculating shape and scale is specific to Gamma distr
-                    #In the future more general approach should be taken
-                    shape = calculate_gamma_shape(c.expected_time["time_mean"],c.expected_time["time_std"])
-                    scale = calculate_gamma_scale(c.expected_time["time_mean"],c.expected_time["time_std"])
                     #Create task sample distribution
-                    task_distribution = DISTRIBUTION(
-                        shape, scale, size=SAMPLE_SIZE
-                    )
+                    task_distribution = _utils.generate_distribution(c.simulation_properties["probability"], SAMPLE_SIZE) 
                     self.all_tasks_duration_dict[c] = task_distribution
+                    #Temporary solution -> needed for optimization
+                    self.tasks_for_optimization.append(np.mean(task_distribution))
+                    self.tasks_ids_for_optimization.append(c._id)
                 
                 #Take index of current element and put it in history
                 idx = pending_copy.index(c)
@@ -193,7 +182,7 @@ class SimulationDAG():
 
     def create_total_distribution(self, plot=True):
         #Check if total already exitst and if it does just return it
-        if self.total:
+        if self.total is not None:
             if plot:
                 self._plot_distribution(self.total)
             return self.total
@@ -220,7 +209,7 @@ class SimulationDAG():
             print("-" * 10)
 
         print("-" * 50)
-        print("All tasks duration dict : ")
+        print("All tasks duration dict for total distribution : ")
         print(self.all_tasks_duration_dict)
         print("-" * 50)
 
@@ -319,7 +308,7 @@ class SimulationDAG():
         return self.tasks_ids_for_optimization
 
     def _handle_complex_paths(
-        self, gateway_dict, gateway, xor_possible_paths_samples=None
+        self, gateway_dict, gateway, xor_possible_paths_samples
     ):
         """
         Recursivly handle nested gateways. 
@@ -341,7 +330,7 @@ class SimulationDAG():
         for key, path in path_dict.items():
             single_path_time = []
             for p in path:
-                print("P : ",p)
+                print("Element on path : ",p)
                 if isinstance(p, bpmn_types.Gateway):
                     task_time = self._handle_complex_paths(
                         gateway_dict, p, xor_possible_paths_samples
@@ -366,39 +355,11 @@ class SimulationDAG():
         print("All paths time ordered : ", all_paths_time_ordered)
         if isinstance(gateway, bpmn_types.ExclusiveGateway):
             print(f"Handling {gateway}")
-            #Check if probabilities == 1.0
-            if sum(paths_probability_ordered) != 1.0:
-                raise ValueError(f"Sum of all paths probabilites for specific XOR gateway must be 1.0, recived : {paths_probability_ordered}")
-            #List for mixed sample
-            complex_mix_sample = []
-            #Take random samples from distributions with size based on its probability
-            for index, path in enumerate(all_paths_time_ordered):
-                size_for_this_path = int(SAMPLE_SIZE * paths_probability_ordered[index])
-                complex_mix_sample.append(numpy_random.choice(path, size=size_for_this_path, replace=False)) 
-            #Convert list to numpy array
-            np.asarray(complex_mix_sample, dtype=object)
-            #Stack all arrays into one array
-            complex_mix_sample = np.hstack(complex_mix_sample)
-            #Check len of new sample -> must be == sample size
-            if len(complex_mix_sample) != SAMPLE_SIZE:
-                highest_path_probability = max(paths_probability_ordered)
-                #TODO
-                raise NotImplementedError("Add missing points to complex_mix_sample from highest probability path untill len(comlex_mix_sample) == sample__size")
-            #Shuffle samples in complex mix -> essential otherwise it will give wrong results with summation
-            numpy_random.shuffle(complex_mix_sample)
-            print("Complex mix sample : ", complex_mix_sample)
-            #print("Complex mix type : ", complex_mix_sample.dtype)
-            print("*"*20)
+            complex_sample = _utils.generate_mix_distribution(all_paths_time_ordered, paths_probability_ordered, SAMPLE_SIZE)
         else:
-            complex_maximum = reduce(
-                lambda a, c: np.maximum(a, c),
-                all_paths_time_ordered[1:],
-                all_paths_time_ordered[0],
-            )
+            complex_sample = _utils.generate_max_distribution(all_paths_time_ordered)
 
-            complex_mix_sample = complex_maximum
-
-        return complex_mix_sample
+        return complex_sample
 
     def _find_all_possible_paths(self, gateway):
         """

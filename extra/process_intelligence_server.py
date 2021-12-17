@@ -24,7 +24,7 @@ for file in os.listdir(models_directory):
         m = BpmnModel(file)
         models[file] = m
 
-#In the future it will be needed to maintain persistance for simulation, etc.
+#In the future persistance for simulation, etc. will be needed
 async def run_as_server(app):
     app["bpmn_models"] = models
 

@@ -80,16 +80,40 @@ class SequenceFlow(BpmnObject):
 @bpmn_tag("bpmn:task")
 class Task(BpmnObject):
     def __init__(self):
-        self.expected_time = {}
+        self.simulation_properties = {}
+        self.simulation_properties["probability"] = {}
+        self.simulation_properties["optimization"] = {}
+        #This helps to keep track of multiple probability distributions
+        #for specific task
+        self.current_distribution = None
 
     def parse(self, element):
         super(Task, self).parse(element)
         for p in element.findall(".//camunda:property", NS):
-            if (
-                p.attrib.get("name") == "time_mean"
-                or p.attrib.get("name") == "time_std"
-            ):
-                self.expected_time[p.attrib["name"]] = float(p.attrib["value"])
+            property_name = p.attrib.get("name")
+            self._check_probability_properties(p, property_name)
+            self._check_optimization_properties(property_name)
+
+    def _check_probability_properties(self, p, property_name):
+        if property_name is not None and "distribution-" in property_name:
+            self.current_distribution = property_name
+            self.simulation_properties["probability"][self.current_distribution] = {}
+            self.simulation_properties["probability"][self.current_distribution]["name"] = p.attrib["value"]
+        if (property_name == "time_mean" or property_name == "time_std"):
+            #This if statement is just for backwards compatibility and it
+            #should be removed in the future updates as ./extra/ will not 
+            #work without current_distribution parameter
+            if self.current_distribution:
+                self.simulation_properties["probability"][self.current_distribution][property_name] = float(p.attrib["value"])
+        if (property_name == "weights"):
+            #Create list from string
+            weights = [float(x) for x in p.attrib["value"].split(",")]
+            #Add correct weight to each distribution
+            for index, distribution in enumerate(self.simulation_properties["probability"]):
+                self.simulation_properties["probability"][distribution]["weight"] = weights[index]
+
+    def _check_optimization_properties(self, property_name):
+        pass
 
     def get_info(self):
         return {"type": self.tag}
