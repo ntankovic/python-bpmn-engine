@@ -78,7 +78,7 @@ async def handle_nsga2_optimization_solutions_for_dag(request):
         tasks_ids = dag_storage[model_name].tasks_ids_for_optimization
         population_size = int(params["population_size"]) if "population_size" in params else 35
         generations = int(params["generations"]) if "generations" in params else 50 
-        solutions = nsga2.run(tasks_mean_duration, tasks_ids, population_size, generations, plot=False, json=True)
+        solutions = nsga2.run(tasks_mean_duration, tasks_ids, population_size, generations, plot=True, json=True)
         return web.json_response({"status":"OK", "results": solutions})
     except Exception as e:
         return default_simulation_error_handler(e)

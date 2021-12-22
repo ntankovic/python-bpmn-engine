@@ -1,4 +1,4 @@
-from task import Task, total_cost, total_time
+from task import Task, AlternativeTask, total_cost, total_time
 import numpy as np
 import random
 import matplotlib.pyplot as plt
@@ -199,9 +199,11 @@ def mutation(child):
     for task in child: 
         #There is 0.5 probability that task in process will mutate
         if random.uniform(0.0,1.0) < 0.5:
-            cluster_types = [0,1,2,3,4,5,6,7]
-            cluster_types.pop(task.cluster_type)
-            task.cluster_type = random.choice(cluster_types)
+            #cluster_types = [0,1,2,3,4,5,6,7]
+            #cluster_types.pop(task.cluster_type)
+            #task.cluster_type = random.choice(cluster_types)
+            #Alternative solution
+            task.cluster_type.new_random_cluster_count()
     return child
 
 def generate_offspring_population(parent_population, objective_scores_for_solutions, fronts_by_level, distances, population_size):
@@ -225,18 +227,22 @@ def generate_offspring_population(parent_population, objective_scores_for_soluti
         new_generation.extend(children)
     return new_generation
 
-def run(tasks_mean_duration, tasks_ids, population_size=35, generations=50, plot=True, json=False):
-    tasks_durations = tasks_mean_duration
+def run(tasks_from_bpmn, tasks_ids, population_size=35, generations=50, plot=True, json=False):
+    #tasks_durations = tasks_from_bpmn
+    #Alternative solution
+    tasks_durations = tasks_from_bpmn["time"]
+    tasks_requirments = tasks_from_bpmn["requirements"]
+    #End Alternative solution
     tasks_ids = tasks_ids
     process_size = len(tasks_durations)
     population_size = population_size
     generations = generations
 
-    mean_tasks_duration_on_normal_clusters = sum(tasks_durations)
-    mean_tasks_cost_on_normal_clusters = sum(tasks_durations) * 0.086
+    #mean_tasks_duration_on_normal_clusters = sum(tasks_durations)
+    #mean_tasks_cost_on_normal_clusters = sum(tasks_durations) * 0.086
 
-    print("Mean time on normal cluster :",mean_tasks_duration_on_normal_clusters)
-    print("Cost on normal cluster :", mean_tasks_cost_on_normal_clusters)
+    #print("Mean time on normal cluster :",mean_tasks_duration_on_normal_clusters)
+    #print("Cost on normal cluster :", mean_tasks_cost_on_normal_clusters)
 
     #Population list
     solutions = []
@@ -244,7 +250,9 @@ def run(tasks_mean_duration, tasks_ids, population_size=35, generations=50, plot
     for s in range(population_size):
         process_tasks = []
         for i in range(process_size):
-            process_tasks.append(Task(tasks_durations[i], random.choice([0,1,2,3,4,5,6,7]), tasks_ids[i]))
+            #process_tasks.append(Task(tasks_durations[i], random.choice([0,1,2,3,4,5,6,7]), tasks_ids[i]))
+            #Alternative solution
+            process_tasks.append(AlternativeTask(tasks_durations[i], tasks_requirments[i], tasks_ids[i]))
         solutions.append(process_tasks)
 
     #Colletion of previous solutions for plot
@@ -383,7 +391,7 @@ def convert_solutions_to_json(solutions):
         solution_cost = total_cost(solution)
         tasks_list = []
         for task in solution:
-            tasks_list.append(json.dumps(task.__dict__))
+            tasks_list.append(json.dumps(task.__dict__, default=lambda o: o.__dict__))
         s["time"] = solution_time
         s["cost"] = solution_cost
         s["tasks_list"] = tasks_list

@@ -31,7 +31,11 @@ class SimulationDAG():
         self.and_paths_dict = {}
         self.xor_path_samples_dictionary = defaultdict(list)
         #Temporary storage of tasks for optmization
-        self.tasks_for_optimization = []
+        #self.tasks_for_optimization = []
+        #Alternative temporary storage of tasks for optimization
+        self.tasks_for_optimization = {}
+        self.tasks_for_optimization["time"]=[]
+        self.tasks_for_optimization["requirements"] = []
         #Temporary storage of tasks ids for optimization
         self.tasks_ids_for_optimization = []
 
@@ -68,7 +72,10 @@ class SimulationDAG():
                     task_distribution = _utils.generate_distribution(c.simulation_properties["probability"], SAMPLE_SIZE) 
                     self.all_tasks_duration_dict[c] = task_distribution
                     #Temporary solution -> needed for optimization
-                    self.tasks_for_optimization.append(np.mean(task_distribution))
+                    #self.tasks_for_optimization.append(np.mean(task_distribution))
+                    #Alternative temporary solution
+                    self.tasks_for_optimization["time"].append(np.mean(task_distribution))
+                    self.tasks_for_optimization["requirements"].append(c.simulation_properties["optimization"])
                     self.tasks_ids_for_optimization.append(c._id)
                 
                 #Take index of current element and put it in history

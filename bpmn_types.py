@@ -92,7 +92,7 @@ class Task(BpmnObject):
         for p in element.findall(".//camunda:property", NS):
             property_name = p.attrib.get("name")
             self._check_probability_properties(p, property_name)
-            self._check_optimization_properties(property_name)
+            self._check_optimization_properties(p, property_name)
 
     def _check_probability_properties(self, p, property_name):
         if property_name is not None and "distribution-" in property_name:
@@ -112,8 +112,11 @@ class Task(BpmnObject):
             for index, distribution in enumerate(self.simulation_properties["probability"]):
                 self.simulation_properties["probability"][distribution]["weight"] = weights[index]
 
-    def _check_optimization_properties(self, property_name):
-        pass
+    def _check_optimization_properties(self, p, property_name):
+        if property_name is not None and "constraint-" in property_name:
+            constr = property_name.split("constraint-")[1]
+            self.simulation_properties["optimization"][constr] = float(p.attrib["value"])
+
 
     def get_info(self):
         return {"type": self.tag}
