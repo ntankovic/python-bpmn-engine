@@ -14,6 +14,9 @@ models/test1.bpmn
 models/test_mid_event_prob.bpmn
 models/test_re.bpmn
 models/marketing_example.bpmn
+models/marketing_52_example.bpmn
+models/marketing_104_example.bpmn
+models/test_complex_paths.bpmn
 py-bpmn-env
 database/
 env.py

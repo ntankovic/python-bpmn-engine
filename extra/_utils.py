@@ -13,6 +13,8 @@ def calculate_gamma_scale(mean, std):
 def calculate_exponential_lambda(mean):
     return 1/mean
 
+def generate_distribution_with_different_size(distribution, sample_size):
+    return numpy_random.choice(distribution, size=sample_size, replace=False)
 def generate_gamma_distribution(mean,std,sample_size):
     shape = calculate_gamma_shape(mean,std)
     scale = calculate_gamma_scale(mean,std)
@@ -33,10 +35,8 @@ def generate_mix_distribution(distributions, weights, sample_size):
     for index, distribution in enumerate(distributions):
         distribution_size = int(sample_size * weights[index])
         mix_distribution.append(numpy_random.choice(distribution, size=distribution_size, replace=False)) 
-    #Convert list to numpy array
-    np.asarray(mix_distribution, dtype=object)
-    #Stack all arrays into one array
-    mix_distribution = np.hstack(mix_distribution)
+    #Concatenate all arrays into one array
+    mix_distribution = np.concatenate(mix_distribution, axis=None)
     #Check len of new sample -> must be == sample size
     if len(mix_distribution) != sample_size:
         highest_path_probability = max(weights)
@@ -44,18 +44,26 @@ def generate_mix_distribution(distributions, weights, sample_size):
         raise NotImplementedError("Add missing points to mix_distribution from highest probability path untill len(comlex_mix_sample) == sample__size")
     #Shuffle samples in mix distribution -> essential otherwise it will give wrong results with summation
     numpy_random.shuffle(mix_distribution)
-    print("Complex mix sample : ", mix_distribution)
-    print("*"*20)
     return mix_distribution
 
 
-def generate_max_distribution(distributions):
-    max_distribution = reduce(
-        lambda a, c: np.maximum(a, c),
-        distributions[1:],
-        distributions[0],
-    )
-    return max_distribution
+def generate_max_distribution(distributions, cost=False):
+    #If we are creating cost distribution for parallel gateway we still need
+    #to pay for all tasks within parallel gateway not just the ones with
+    #longest execution time
+    if cost:
+        max_distribution = sum(distributions)
+        return max_distribution
+    #As opposed to when we are calculating maximum duration for parallel gateway
+    #we only need to take into consideration samples with highest execution time
+    #since process can not continue unless all tasks have finished
+    else:
+        max_distribution = reduce(
+            lambda a, c: np.maximum(a, c),
+            distributions[1:],
+            distributions[0],
+        )
+        return max_distribution
 
 
 

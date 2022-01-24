@@ -1,18 +1,28 @@
+import time_distribution_probability as simulation
+import json
 import numpy as np
 from copy import deepcopy
+import os
+import sys
+#Get parent path so it's possible to import modules from parent directory
+parent_path = os.path.abspath(os.path.split(sys.argv[0])[0]) + "/../"
+sys.path.append(parent_path)
+import bpmn_types
 
 #New way to use numpy random
 numpy_random = np.random.default_rng()
 
-class Task():
-    def __init__(self, mean_time, cluster_type, task_id):
+class AlternativeTask():
+    def __init__(self,mean_time,optimization_part,task_id):
         self.mean_time = mean_time
-        self.cluster_type = cluster_type
+        requirements = [optimization_part["cpu"], optimization_part["ram"]]
+        self.cluster_type = Cluster(requirements)
         self.task_id = task_id
-        self.requirments = None
-
-
-
+        #Parallel law parameters
+        self.a = optimization_part["a"]
+        self.b = optimization_part["b"]
+        self.c = optimization_part["c"]
+    
     def gustafson_law(self, N, p):
         #N -> number of processors 
         #p -> fraction of time executing the parallel parts
@@ -23,115 +33,50 @@ class Task():
         #N -> number of processors
         return 1/((1-p) + p/N)
 
-
-
-    def calculate_time_based_on_cluster(self):
-        #Starting cluster takes 20min ~= 0.3h
-        cluster_starting_time = 0.3
-        #E2 machine type
-        if self.cluster_type == 0:
-            return self.mean_time + cluster_starting_time
-        if self.cluster_type == 1:
-            return self.mean_time / 1.5 + cluster_starting_time
-        if self.cluster_type == 2:
-            return self.mean_time / 3.4 + cluster_starting_time
-        if self.cluster_type == 3:
-            return self.mean_time / 6.1 + cluster_starting_time
-        #N1 machine type
-        if self.cluster_type == 4:
-            return self.mean_time * 1.5 + cluster_starting_time
-        if self.cluster_type == 5:
-            return self.mean_time * 1.05 + cluster_starting_time
-        if self.cluster_type == 6:
-            return self.mean_time / 1.4 + cluster_starting_time
-        if self.cluster_type == 7:
-            return self.mean_time / 3.25 + cluster_starting_time
-        
-    def calculate_cost_based_on_cluster(self):
-        #Prices are based on Google Compute Engine, E2 standard machine type, europe-west4
-        #Fixed cluster cost for running it
-        fixed_cluster_cost = 0.02
-        #Virtual CPU - 2
-        #Memory - 8gb
-        if self.cluster_type == 0:
-            return self.mean_time * 0.074 + fixed_cluster_cost
-        #Virtual CPU - 4
-        #Memory - 16gb
-        if self.cluster_type == 1:
-            return self.mean_time * 0.15 + fixed_cluster_cost
-        #Virtual CPU - 8
-        #Memory - 32gb
-        if self.cluster_type == 2:
-            return self.mean_time * 0.3 + fixed_cluster_cost
-        #Virtual CPU - 16 
-        #Memory - 64gb
-        if self.cluster_type == 3:
-            return self.mean_time * 0.59 + fixed_cluster_cost
-        #N1 standard machine type, europe-west4
-        #They are required for renting GPU and their prices will be later used
-        #only when GPU is needed
-        #Virtual CPU - 1
-        #Memory - 3.75gb
-        if self.cluster_type == 4:
-            return self.mean_time * 0.05 + fixed_cluster_cost
-        #Virtual CPU - 2
-        #Memory - 7.5gb
-        if self.cluster_type == 5:
-            return self.mean_time * 0.10 + fixed_cluster_cost
-        #Virtual CPU - 4
-        #Memory - 15gb
-        if self.cluster_type == 6:
-            return self.mean_time * 0.21 + fixed_cluster_cost
-        #Virtual CPU - 8
-        #Memory - 30gb
-        if self.cluster_type == 7:
-            return self.mean_time * 0.42 + fixed_cluster_cost
-
-    def __repr__(self):
-        return f"{self.cluster_type} : {self.mean_time}"
-
-class AlternativeTask():
-    def __init__(self, mean_time, optimization_part, task_id):
-        self.mean_time = mean_time
-        requirements = [optimization_part["cpu"], optimization_part["ram"]]
-        self.cluster_type = Cluster(requirements)
-        self.task_id = task_id
-        #Parallel law parameters
-        self.a = optimization_part["a"]
-        self.b = optimization_part["b"]
-        self.c = optimization_part["c"]
+    def get_json_load_for_task(self):
+        temp = json.dumps(self.__dict__, default=lambda o: o.__dict__)
+        return json.loads(temp)
 
     def calculate_time_based_on_cluster(self):
         #Starting cluster takes 20min ~= 0.3h
         cluster_starting_time = 0.3
-        return self.mean_time * self.cluster_type.parallel_law(self.a, self.b, self.c) + cluster_starting_time
-
+        time = self.mean_time * self.cluster_type.parallel_law(self.a, self.b, self.c) + cluster_starting_time
+        self.cluster_type.time_based_on_cluster = time
+        return time
     def calculate_cost_based_on_cluster(self):
         #Fixed cluster cost for running it
         fixed_cluster_cost = 0.02
-        return self.mean_time * self.cluster_type.cluster_cost() * self.cluster_type.nexec + fixed_cluster_cost
-
+        if self.cluster_type.time_based_on_cluster is None:
+            self.calculate_time_based_on_cluster()
+        ec2_charges = self.cluster_type.time_based_on_cluster * self.cluster_type.ec2_cost() * self.cluster_type.nexec 
+        emr_charges = self.cluster_type.time_based_on_cluster * self.cluster_type.emr_cost() * self.cluster_type.nexec 
+        cost = ec2_charges + emr_charges + fixed_cluster_cost
+        self.cluster_type.cost_based_on_cluster = cost
+        return cost
 
 class Cluster():
     #Location -> EU-Frankfurt
     #https://aws.amazon.com/ec2/instance-types/
-    possible_machine_type = {0:[4,32], 1:[8,64], 2:[16,128], 3:[32,256]}
+    _possible_machine_type = {0:[4,32], 1:[8,64], 2:[16,128], 3:[32,256]}
     #https://aws.amazon.com/emr/pricing/?nc=sn&loc=4
-    machine_prices = [0.304, 0.608, 1.216, 2.432]
+    _machine_prices = [0.304, 0.608, 1.216, 2.432]
+    _emr_machine_prices = [0.063, 0.126, 0.252, 0.27]
     #Possible number of clusters
-    possible_nexec = [1,4,9,16,25,36,49]
+    _possible_nexec = [1,4,9,16,25,36,49,64]
 
-    def __init__(self, requirements):
-
+    def __init__(self, requirements, nexec=None):
+        self.time_based_on_cluster = None
+        self.cost_based_on_cluster = None
         self.machine_type = None
-        self.nexec = None
+        self.nexec = nexec
         self.chose_machine_type(requirements)
         
     def chose_machine_type(self, requirements):
-        for key, features in Cluster.possible_machine_type.items():
+        for key, features in Cluster._possible_machine_type.items():
             if np.array_equal(features, requirements):
                 self.machine_type = key
-                self.nexec = self.chose_nexec(Cluster.possible_nexec)
+                if self.nexec is None:
+                    self.nexec = self.chose_nexec(Cluster._possible_nexec)
                 return
 
     def chose_nexec(self, nexec_choice):
@@ -140,24 +85,53 @@ class Cluster():
         #This may be fixed in future updates.
         return int(numpy_random.choice(nexec_choice))
 
-    def cluster_cost(self):
-        return Cluster.machine_prices[self.machine_type]
+    def emr_cost(self):
+        return Cluster._emr_machine_prices[self.machine_type]
+
+    def ec2_cost(self):
+        return Cluster._machine_prices[self.machine_type]
 
     def parallel_law(self, a, b, c):
-        return (a/self.nexec) + b * self.nexec**c
+        if self.nexec == 1:
+            return 1
+        else:
+            return (a/self.nexec) + b * self.nexec**c
 
     def new_random_cluster_count(self):
-        copy_possible_nexec = deepcopy(Cluster.possible_nexec)
+        copy_possible_nexec = deepcopy(Cluster._possible_nexec)
         index = copy_possible_nexec.index(self.nexec)
         copy_possible_nexec.pop(index)
         self.nexec = self.chose_nexec(copy_possible_nexec)
 
 
+def master_and_core_cost(time):
+    #Master and Core cost per process
+    #m5-2xlarge
+    ec2 = time * 0.46
+    emr = time * 0.096
+    return 2*(ec2+emr)
+
+SIMULATION_OBJECT = None
+
+process_total_time_history = {}
 
 def total_time(process):
-    sum_time = [t.calculate_time_based_on_cluster() for t in process]
-    return sum(sum_time)
+    for t in process:
+        t.calculate_time_based_on_cluster() 
+    tasks = [x.get_json_load_for_task() for x in process]
+    optimized_distribution = SIMULATION_OBJECT.create_optimized_total_distribution(tasks, plot=False, sample_size=100)[0]
+    #Round for precision in 1 minute, more decimal points is currently 
+    #unnecessary
+    total_perc = np.round(np.percentile(optimized_distribution, 99), 3)
+    total_time = np.round(np.mean(optimized_distribution),3)
+    #History solution
+    process = tuple(process)
+    process_total_time_history[process] = float(total_time)
+    return float(total_time), float(total_perc)
 
 def total_cost(process):
+    time = process_total_time_history[tuple(process)]
+    master_and_core = master_and_core_cost(time)
     sum_cost = [t.calculate_cost_based_on_cluster() for t in process]
-    return sum(sum_cost)
+    #Round cost to 2 decimals, since cost is calculated in USD
+    return np.round(sum(sum_cost) + master_and_core, 2)
