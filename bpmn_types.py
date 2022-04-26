@@ -464,7 +464,7 @@ class TimerEvent():
     def parse(self,element):
         for e in element:
             if re.search("\w+Duration",str(e.tag)):
-                # Duration text should be "PnYnMnWnDTnHnMnS"
+                # Duration text should be "PnYnMnDTnHnMnS"
                 # n - number
                 # P - is obligatory
                 # T - is obligatory when specifing hours,minutues and/or seconds

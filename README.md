@@ -1,11 +1,46 @@
 # A python module for parsing and executing BPMN models
 
-### Note
-`extra/` is still in development and components inside haven't been tested yet for each possible use case.
-
 ## Supported BPMN elements so far:
 
-### Start/end events
+### Events
+- Message 
+    - Catch event is supported at the moment
+    - To activate Catch MessageEvent, post request must be sent at `/instance/{instance_id}/task/{task_id}/message`
+    - If there is data associated with the request it must be sent as JSON 
+        - Engine will process data and store JSON key:value pairs into process variables
+- Timer
+    - At the moment timer definition type **must** be `Duration`
+    - Duration must be specified in ISO 8601 format for duration - `PnYnMnDTnHnMnS`
+        - P - is obligatory
+        - T - is obligatory when specifing hours,minutues and/or seconds
+        - e.g. `P1DT3H20S` - one day,three hours and 20 seconds
+        - e.g. `P2W` - two weeks -> weeks **can not** be mixed with other letters
+- Error
+    - When used as EndEvent 
+        - Global Error reference must be added 
+        - Message **must** be specified as it is used to find BoundaryEvent catching the error
+    - When used as BoundaryEvent
+        - To catch the error, Message Variable **must** be the same as the Message used in the EndEvent
+
+### Start events
+- Message
+- Timer
+- None
+
+### End events
+- Terminate
+- Error
+    - Supported only on SubProcess and CallActivity
+- None
+
+### Interrupting Boundary events
+- Timer
+- Error 
+- Message
+
+### Intermediate Catch events
+- Message
+- Timer
 
 ### User Task
 - Form fields
@@ -16,10 +51,6 @@
 ### Service Task & Send Task
 - Supported implementation at the moment is **Connector**
     - Connector Id **must** be `http-connector`
-    - Input parameters needs to have following parameters:
-        - **url** -> location of your web service, eg. http://myservice.com/api/call, and it should be **String or Expression** type
-        - **method** -> http method that you will use for request, eg. GET, and it should be **String or Expression** type
-        - **url_parameter** -> in case you want to send URL parameter with your request, it should be **Map** type with _key_ and _value_. It is worth noting that _value_ can be simple expression eg. `${my_process_variable}`. Eg. URL request result for _key_ `task_id` and _value_ `${current_task}`, if `current_task` is inside process variables, will be http://myservice.com/api/call?task_id=1
 - Input variables and output variables for Service and Send task **must** be specified inside **Input/Output** tab
     - Input parameters type at the moment can be **String or Expression** and if you plan to use process variables you should use expression, eg. `${my_process_variable}`, only **String or Expression** type is currently supporting expressions
         - All input variables will be send as JSON to the service  
@@ -30,7 +61,7 @@
 ### Call Activity
 - CallActivity Type **must** be BPMN
 - Called Element **must** be *process_id* of process you wish to start
-- Binding **must** be **deployment** if you wish to call process from other BPMN diagram, other bindings assumes that called process is inside the same diagrams Call Activity
+- Binding **must** be **deployment** if you wish to call process from other BPMN diagram, other bindings assumes that called process is inside the same diagram as Call Activity
 
 ### Gateways (Exclusive, Parallel)
 
@@ -46,7 +77,6 @@
 
 ## Pending features:
 -   full fledged REST API
--   in/out variables for Call Activity
 -   all standard BPMN elements
 -   ...
 

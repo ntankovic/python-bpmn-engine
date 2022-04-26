@@ -8,8 +8,19 @@
 
 ### Changed
 
-- Update documentation 
+- Sequence conditions can be expressions 
+- Update documentation for `/extra`
 
+### Fixed
+
+- Fix BusinessRule Task
+
+## [0.0.1.1] - 2022-04-26
+
+### Changed
+
+- Update documentation for the engine
+- Update `requirements.txt`
 
 ## [0.0.1] - 2022-04-26
 
