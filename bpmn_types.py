@@ -1,15 +1,22 @@
+from isoduration import parse_duration
+from datetime import datetime
+import math
 import requests
 import os
 import env
 from utils.common import parse_expression
+import re
+import asyncio
 
 NS = {
     "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
     "camunda": "http://camunda.org/schema/1.0/bpmn",
 }
 
+# Holds all classes defined with bpmn_tag decorator
 BPMN_MAPPINGS = {}
 
+EVENT_SUBTYPE_MAPPINGS = {}
 
 def bpmn_tag(tag):
     def wrap(object):
@@ -17,6 +24,12 @@ def bpmn_tag(tag):
         BPMN_MAPPINGS[tag] = object
         return object
 
+    return wrap
+
+def event_subtype(tag):
+    def wrap(object):
+        EVENT_SUBTYPE_MAPPINGS[tag] = object
+        return object
     return wrap
 
 
@@ -42,12 +55,10 @@ class BpmnObject(object):
 class Process(BpmnObject):
     def __init__(self):
         self.is_main_in_collaboration = None
-        self.name = None
 
     def parse(self, element):
         super(Process, self).parse(element)
         # Extensions should exists only if it's Collaboration diagram
-        self.name = element.attrib["name"] if element.attrib.get("name") else ""
         if element.find(".bpmn:extensionElements", NS):
             ext = element.find(".bpmn:extensionElements", NS)
             for p in ext.findall(".//camunda:property", NS):
@@ -80,6 +91,9 @@ class SequenceFlow(BpmnObject):
 @bpmn_tag("bpmn:task")
 class Task(BpmnObject):
     def __init__(self):
+        self.attached_events = []
+
+        # Simulation attributes
         self.simulation_properties = {}
         self.simulation_properties["probability"] = {}
         self.simulation_properties["optimization"] = {}
@@ -95,16 +109,20 @@ class Task(BpmnObject):
             self._check_optimization_properties(p, property_name)
 
     def _check_probability_properties(self, p, property_name):
+        """
+        Properties for distributions MUST be in following order:
+        distribution-1 name
+        distribution-1 parameters
+        distribution-2 name
+        ...
+
+        """
         if property_name is not None and "distribution-" in property_name:
             self.current_distribution = property_name
             self.simulation_properties["probability"][self.current_distribution] = {}
             self.simulation_properties["probability"][self.current_distribution]["name"] = p.attrib["value"]
         if (property_name == "time_mean" or property_name == "time_std"):
-            #This if statement is just for backwards compatibility and it
-            #should be removed in the future updates as ./extra/ will not 
-            #work without current_distribution parameter
-            if self.current_distribution:
-                self.simulation_properties["probability"][self.current_distribution][property_name] = float(p.attrib["value"])
+            self.simulation_properties["probability"][self.current_distribution][property_name] = float(p.attrib["value"])
         if (property_name == "weights"):
             #Create list from string
             weights = [float(x) for x in p.attrib["value"].split(",")]
@@ -178,7 +196,6 @@ class UserTask(Task):
 @bpmn_tag("bpmn:serviceTask")
 class ServiceTask(Task):
     def __init__(self):
-        self.properties_fields = {}
         self.input_variables = {}
         self.output_variables = {}
         self.connector_fields = {
@@ -238,7 +255,7 @@ class ServiceTask(Task):
         else:
             dictionary[element.attrib["name"]] = element.text if element.text else ""
 
-    async def run_connector(self, variables, instance_id):
+    def run_connector(self, variables, instance_id):
         # Check for URL parameters
         parameters = {}
         if self.connector_fields["input_variables"].get("url_parameter"):
@@ -300,7 +317,7 @@ class ServiceTask(Task):
 
     async def run(self, variables, instance_id):
         if self.connector_fields["connector_id"] == "http-connector":
-            await self.run_connector(variables, instance_id)
+            self.run_connector(variables, instance_id)
         return True
 
 
@@ -309,6 +326,24 @@ class SendTask(ServiceTask):
     def parse(self, element):
         super(SendTask, self).parse(element)
 
+    async def run(self, variables, instance_id):
+        if self.connector_fields["connector_id"] == "http-connector":
+            self.run_connector(variables, instance_id)
+
+
+@bpmn_tag("bpmn:businessRule")
+class BusinessRule(Task):
+    def __init__(self):
+        self.decision_ref = None
+
+    def parse(self, element):
+        super(BusinessRule, self).parse(element)
+
+### SUBPROCESSES ### 
+
+@bpmn_tag("bpmn:subProcess")
+class SubProcess(Task):
+    pass
 
 @bpmn_tag("bpmn:callActivity")
 class CallActivity(Task):
@@ -327,25 +362,53 @@ class CallActivity(Task):
         ):
             self.deployment = True
 
-
-@bpmn_tag("bpmn:businessRule")
-class BusinessRule(ServiceTask):
-    def __init__(self):
-        self.decision_ref = None
-
-    def parse(self, element):
-        super(BusinessRule, self).parse(element)
-
+### EVENTS ###
 
 @bpmn_tag("bpmn:event")
 class Event(BpmnObject):
-    pass
+    def __init__(self):
+        self.subtype = None
+    
+    def parse(self, element):
+        super(Event, self).parse(element)
+        for e in element:
+            #Find event subtype
+            if re.search("\w+EventDefinition",str(e.tag)):
+                event_subtype = str(e.tag).split("}")[1]
+                self.subtype = EVENT_SUBTYPE_MAPPINGS[event_subtype](e)
 
+    def get_info(self):
+        return {"type": self.tag, "subtype":str(self.subtype)}
+
+@bpmn_tag("bpmn:boundaryEvent")
+class BoundaryEvent(Event):
+    def __init__(self):
+        self.attached_to = None
+        self.cancle_activity = None
+    
+    def parse(self, element):
+        super(BoundaryEvent, self).parse(element)
+        self.attached_to = element.attrib["attachedToRef"]
+        self.cancle_activity = False if "cancelActivity" in element.attrib else True
+
+
+    async def run(self):
+        try:
+            await self.subtype.run()
+        except asyncio.CancelledError:
+            return True
+    
 
 @bpmn_tag("bpmn:startEvent")
 class StartEvent(Event):
-    pass
-
+    async def run(self):
+        if self.subtype:
+            try:
+                await self.subtype.run()
+            except asyncio.CancelledError:
+                return True
+        else:
+            return True
 
 @bpmn_tag("bpmn:endEvent")
 class EndEvent(Event):
@@ -354,6 +417,108 @@ class EndEvent(Event):
 @bpmn_tag("bpmn:intermediateThrowEvent")
 class IntermediateThrowEvent(Event):
     pass
+
+@bpmn_tag("bpmn:intermediateCatchEvent")
+class IntermediateCatchEvent(Event):
+    async def run(self):
+        await self.subtype.run()
+
+### Event Types ### 
+
+@event_subtype("errorEventDefinition")
+class ErrorEvent():
+    def __init__(self,element):
+        # Used for end events
+        self.error_ref = None
+        # Set from bpmn_model
+        self.error_message = None
+        # Used for boundary events, it must match self.error_message from 
+        # ErrorEndEvent
+        self.error_message_variable = None
+        self.parse(element)
+
+    def parse(self,element):
+        self.error_ref = element.attrib["errorRef"] if "errorRef" in element.attrib else None
+        if f"{{{NS['camunda']}}}errorMessageVariable" in element.attrib:
+            self.error_message_variable = element.attrib[f"{{{NS['camunda']}}}errorMessageVariable"]
+
+    async def run(self):
+        try:
+            # Do nothing...
+            # Logic is handled within bpmn_model.
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            raise
+
+    def __str__(self):
+        return "Error Event"
+
+@event_subtype("timerEventDefinition")
+class TimerEvent():
+    def __init__(self,element):
+        self.timer_type = None
+        self.duration = None
+        self.parse(element)
+    
+    def parse(self,element):
+        for e in element:
+            if re.search("\w+Duration",str(e.tag)):
+                # Duration text should be "PnYnMnWnDTnHnMnS"
+                # n - number
+                # P - is obligatory
+                # T - is obligatory when specifing hours,minutues and/or seconds
+                self.timer_type = "duration"
+                self.duration = self._handle_duration_string(e.text)
+
+    async def run(self):
+        # Start specific timer
+        if self.timer_type == "duration":
+            await asyncio.sleep(self.duration)
+            return True
+
+    def _handle_duration_string(self, duration_string):
+        """
+        Convert string to seconds (int)
+
+        """
+        iso_string = parse_duration(duration_string.upper())
+        current_time = datetime.now()
+        new_datetime = current_time + iso_string
+        # We lose miliseconds on calculations, so we round up to closes integer,
+        # to get intended value 
+        return math.ceil(new_datetime.timestamp() - current_time.timestamp())
+
+    def __str__(self):
+        return "Timer Event"
+
+        
+
+@event_subtype("terminateEventDefinition")
+class TerminateEvent():
+    def __init__(self,element):
+        pass
+    def __str__(self):
+        return "Terminate Event"
+
+@event_subtype("messageEventDefinition")
+class MessageEvent():
+    def __init__(self,element):
+        pass
+    
+    async def run(self):
+        try:
+            # Do nothing...
+            # Logic is handled within bpmn_model.
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            raise
+
+    def __str__(self):
+        return "Message Event"
+
+### GATEWAYS ### 
 
 @bpmn_tag("bpmn:gateway")
 class Gateway(BpmnObject):

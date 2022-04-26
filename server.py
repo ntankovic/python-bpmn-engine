@@ -3,7 +3,7 @@ import os
 from aiohttp import web
 from uuid import uuid4
 import asyncio
-from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance
+from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, RegularMessage
 import aiohttp_cors
 import db_connector
 from functools import reduce
@@ -36,12 +36,18 @@ async def run_as_server(app):
 
 @routes.get("/model")
 async def get_models(request):
+    """
+    Returns all local BPMN models as JSON
+    """
     data = [m.to_json() for m in models.values()]
     return web.json_response({"status": "ok", "results": data})
 
 
 @routes.get("/model/{model_name}")
 async def get_model(request):
+    """
+    Returns XML content of a single local BPMN model
+    """
     model_name = request.match_info.get("model_name")
     return web.FileResponse(
         path=os.path.join("models", app["bpmn_models"][model_name].model_path)
@@ -62,9 +68,24 @@ async def handle_form(request):
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
     m = get_model_for_instance(instance_id)
+    if not m:
+        raise aiohttp.web.HTTPNotFound
     m.instances[instance_id].in_queue.put_nowait(UserFormMessage(task_id, post))
-
     return web.json_response({"status": "OK"})
+
+@routes.post("/instance/{instance_id}/task/{task_id}/message")
+async def handle_message(request):
+    post = await request.json()
+    instance_id = request.match_info.get("instance_id")
+    task_id = request.match_info.get("task_id")
+    m = get_model_for_instance(instance_id)
+    if not m:
+        raise aiohttp.web.HTTPNotFound
+    result = await m.instances[instance_id].handle_regular_message(RegularMessage(task_id, post))
+    if result:
+        return web.json_response({"status": "OK"})
+    else:
+        raise aiohttp.web.HTTPNotFound
 
 
 @routes.get("/instance")
