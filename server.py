@@ -34,6 +34,7 @@ def create_models():
 
 
 async def run_as_server(app):
+
     app["bpmn_models"] = create_models()
     # db_connector.DB.drop_all_tables(with_all_data=True)
     logs = db_connector.get_instances_log()
@@ -73,6 +74,15 @@ async def get_model(request):
 
 
 @routes.post("/model/{model_name}/instance")
+async def handle_new_instance(request):
+    _id = str(uuid4())
+    model = request.match_info.get("model_name")
+    instance = await app["bpmn_models"][model].create_instance(_id, {})
+    asyncio.create_task(instance.run())
+    return web.json_response({"id": _id})
+
+
+@routes.get("/model/{model_name}/instance")
 async def handle_new_instance(request):
     _id = str(uuid4())
     model = request.match_info.get("model_name")
@@ -159,7 +169,7 @@ async def handle_task_info(request):
     m: BpmnModel = get_model_for_instance(instance_id)
     if not m:
         raise aiohttp.web.HTTPNotFound
-    instance:BpmnInstance = m.instances[instance_id]
+    instance: BpmnInstance = m.instances[instance_id]
     task = instance.model.elements[task_id]
 
     return web.json_response(task.get_info())

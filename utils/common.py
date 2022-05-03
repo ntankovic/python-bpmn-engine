@@ -8,8 +8,13 @@ class SafeDict(dict):
 
 
 def parse_expression(expression, process_variables):
-    if (key := expression.replace("${", "").replace("}", "")) in process_variables:
+    key = expression.replace("${", "").replace("}", "")
+    if key in process_variables:
         return process_variables[key]
+    if "." in key:
+        value = nested_dict_get(process_variables, key)
+        if value:
+            return value
 
     return expression.replace("${", "{").format_map(SafeDict(process_variables))
 
@@ -20,7 +25,7 @@ def nested_dict_get(dictionary, dotted_key):
 
 
 def nested_dict_set(dictionary, dotted_key, value):
-    #not sure if we need this
+    # not sure if we need this
     keys = dotted_key.split('.')
     last = keys.pop()
     for k in keys:

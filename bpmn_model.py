@@ -347,7 +347,9 @@ class BpmnInstance:
                     if isinstance(next_task, ParallelGateway):
                         next_task.add_token()
             else:
+
                 log("Waiting for user...", self.pending)
+
                 queue.append(await in_queue.get())
 
             # Insert finished events into DB

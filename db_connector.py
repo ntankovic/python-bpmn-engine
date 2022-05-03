@@ -33,6 +33,8 @@ def setup_db():
     DB.generate_mapping(create_tables=True)
 
 
+
+
 @db_session
 def add_event(
         model_name, instance_id, activity_id, timestamp, pending, activity_variables

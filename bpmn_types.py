@@ -227,8 +227,9 @@ class ServiceTask(Task):
 
         # JSON data for API
         data = {}
-        for key, value in self.input_variables.items():
+        for key, val in self.input_variables.items():
             # Parse expression if it exists
+            value = val or key
             if isinstance(value, str):
                 value = parse_expression(value, variables)
             elif isinstance(value, list):
@@ -252,17 +253,20 @@ class ServiceTask(Task):
         # Check method and make request
 
         if method := self.connector_fields["input_variables"].get("method") or "GET":
+
             if method == "POST":
                 call_function = client_session.post
             elif method == "PATCH":
                 call_function = client_session.patch
             else:
                 call_function = client_session.get
-
+            if not isinstance(data,dict):
+                data = dict(data)
             response = await call_function(
                 url,
                 params=parameters,
-                data=data,
+                json=data,
+                headers={'content-type': 'application/json'}
             )
             if response.status not in (200, 201):
                 raise Exception(response.text)
@@ -279,12 +283,19 @@ class ServiceTask(Task):
 
         if self.output_variables:
             for key in self.output_variables:
+                value = self.output_variables.get(key)
+                if len(value) > 0:
+                    variables[key] = parse_expression(expression=value, process_variables=r)
                 if key in r:
                     variables[key] = r[key]
+        print(variables)
 
     async def run(self, variables, instance_id):
-        if self.connector_fields["connector_id"] == "http-connector":
+
+        if self.connector_fields["connector_id"] == "http-connector" and len(self.connector_fields["connector_id"]) > 0:
             await self.run_connector(variables, instance_id)
+        else:
+            return False
         return True
 
 
@@ -302,6 +313,7 @@ class ReceiveTask(Task):
         self.output_variables = {}
 
     def parse(self, element):
+
         super(ReceiveTask, self).parse(element)
         for ee in element.findall(".//bpmn:extensionElements", NS):
             # Find direct children inputOutput, Input/Output tab in Camunda

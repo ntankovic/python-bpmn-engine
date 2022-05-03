@@ -1,6 +1,6 @@
 __pycache__
 .vscode
-models/diagram_1.bpmn
+models/private/diagram_1.bpmn
 models/chatbot_model.bpmn
 models/test_podproces.bpmn
 models/test_call_activity.bpmn
