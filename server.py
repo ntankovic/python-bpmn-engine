@@ -219,4 +219,4 @@ async def serve():
 
 if __name__ == "__main__":
     app = run()
-    web.run_app(app, port=9000)
+    web.run_app(app, port=os.environ.get('PORT', 9000))
