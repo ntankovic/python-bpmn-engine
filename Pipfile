@@ -6,7 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-aiohttp = "==3.7.4.post0"
+aiohttp = "3.7.4.post0"
 aiohttp-cors = "0.7.0"
 async-timeout = "3.0.1"
 asyncio = "3.4.3"
