@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 
 import env
 from bpmn_model import *
+from bpmn_model import BpmnInstance
 
 timeout = ClientTimeout(sock_connect=5)
 client_session = ClientSession(timeout=timeout)
