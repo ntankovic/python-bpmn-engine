@@ -22,6 +22,6 @@ RUN pip install --no-cache-dir -r /requirements.txt \
 
 COPY . /usr/src/app
 
-EXPOSE 80
+EXPOSE 9000
 
-CMD ["sh", "./runserver.sh"]
+CMD [ "python3", "-m" , "server.py"]
