@@ -29,7 +29,7 @@ def setup_db():
     if env.DB["provider"] == "postgres":
         DB.bind(**env.DB)
     else:
-        DB.bind(provider="sqlite", filename="database/database.sqlite", create_db=True)
+        DB.bind(provider="sqlite", filename="database/database2.sqlite", create_db=True)
     DB.generate_mapping(create_tables=True)
 
 
