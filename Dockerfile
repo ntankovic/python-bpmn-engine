@@ -1,7 +1,8 @@
 FROM python:3.10.4-bullseye
-RUN sudo apt install libpq-dev python3-dev
+
 RUN apt-get update \
-    # dependencies for building Python packages
+    # dependencies for building Python packages \
+    && apt-get install libpq-dev python3-dev \
     && apt-get install -y build-essential \
     # psycopg2 dependencies
     && apt-get install -y libpq-dev \
