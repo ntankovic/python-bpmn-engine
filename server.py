@@ -192,8 +192,6 @@ app = None
 def run():
     global app
     loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    app = web.Application(loop=loop)
     app.on_startup.append(run_as_server)
     app.add_routes(routes)
 
