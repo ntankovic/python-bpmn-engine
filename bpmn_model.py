@@ -365,7 +365,7 @@ class BpmnInstance:
                     activity_variables=current_and_variables_dict[c],
                 )
         if not is_subprocess:
-            log("WORKFLOW DONE WITH VARIABLES\n" + "---> " + str(dict(self.variables).keys()))
+            log("WORKFLOW DONE WITH VARIABLES\n" + "---> " + str(self.variables))
 
         self.state = "finished"
         self.pending = []

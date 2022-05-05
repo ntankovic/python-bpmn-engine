@@ -34,7 +34,6 @@ def create_models():
 
 
 async def run_as_server(app):
-
     app["bpmn_models"] = create_models()
     # db_connector.DB.drop_all_tables(with_all_data=True)
     logs = db_connector.get_instances_log()
@@ -184,6 +183,17 @@ async def handle_instance_info(request):
     instance = m.instances[instance_id].to_json()
 
     return web.json_response(instance)
+
+
+@routes.get("/instance/state/{instance_id}")
+async def handle_instance_state(request):
+    instance_id = request.match_info.get("instance_id")
+    m = get_model_for_instance(instance_id)
+    if not m:
+        raise aiohttp.web.HTTPNotFound
+    instance = m.instances[instance_id].to_json()
+
+    return web.json_response({"state": instance["state"]})
 
 
 app = None
