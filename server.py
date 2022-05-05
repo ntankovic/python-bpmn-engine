@@ -185,7 +185,37 @@ async def handle_instance_info(request):
     return web.json_response(instance)
 
 
-@routes.get("/instance/state/{instance_id}")
+@routes.get("/instance/{instance_id}/statews")
+async def handle_instance_state_ws(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    state = "running"
+    async for msg in ws:
+        if msg.type == aiohttp.WSMsgType.TEXT:
+            if msg.data == 'close':
+                await ws.close()
+            else:
+                instance_id = request.match_info.get("instance_id")
+
+                while state != "finished" and not ws.closed:
+                    await asyncio.sleep(3)
+                    m = get_model_for_instance(instance_id)
+                    if not m:
+                        await ws.close()
+                    instance = m.instances[instance_id].to_json()
+
+                    await ws.send_json(({"state": instance["state"]}))
+
+        elif msg.type == aiohttp.WSMsgType.ERROR:
+            print('ws connection closed with exception %s' %
+                  ws.exception())
+
+    print('websocket connection closed')
+
+    return ws
+
+
+@routes.get("/instance/{instance_id}/state")
 async def handle_instance_state(request):
     instance_id = request.match_info.get("instance_id")
     m = get_model_for_instance(instance_id)
