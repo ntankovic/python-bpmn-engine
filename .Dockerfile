@@ -24,4 +24,4 @@ COPY . /usr/src/app
 
 EXPOSE 9000
 
-CMD [ "python3", "-m" , "server.py"]
+CMD [ "python3", "-m" , "server"]
