@@ -254,8 +254,7 @@ class BpmnInstance:
 
                 elif isinstance(current, ServiceTask):
                     log("DOING:", current)
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+
                     can_continue = await current.run(self.variables, _id)
                     # Helper variables for DB insert
                     new_variables = {
