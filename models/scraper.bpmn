@@ -37,6 +37,7 @@
         <camunda:inputOutput>
           <camunda:inputParameter name="scrape_results" />
           <camunda:inputParameter name="id_instance" />
+          <camunda:inputParameter name="urls">${urls}</camunda:inputParameter>
         </camunda:inputOutput>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_02lt03j</bpmn:incoming>
@@ -65,6 +66,7 @@
         <camunda:inputOutput>
           <camunda:inputParameter name="urls" />
           <camunda:outputParameter name="scrape_results">${data.results}</camunda:outputParameter>
+          <camunda:outputParameter name="urls">${data.urls}</camunda:outputParameter>
         </camunda:inputOutput>
         <camunda:connector>
           <camunda:inputOutput>

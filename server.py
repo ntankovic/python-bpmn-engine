@@ -3,6 +3,9 @@ import os
 from aiohttp import web
 from uuid import uuid4
 import asyncio
+
+from aiohttp.web_ws import WebSocketResponse
+
 from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, ReceiveMessage, BpmnInstance
 import aiohttp_cors
 import db_connector
@@ -187,7 +190,8 @@ async def handle_instance_info(request):
 
 @routes.get("/instance/{instance_id}/statews")
 async def handle_instance_state_ws(request):
-    ws = web.WebSocketResponse()
+    ws: WebSocketResponse = web.WebSocketResponse()
+
     await ws.prepare(request)
     state = "running"
     async for msg in ws:
@@ -198,13 +202,14 @@ async def handle_instance_state_ws(request):
                 instance_id = request.match_info.get("instance_id")
 
                 while state != "finished" and not ws.closed:
-                    await asyncio.sleep(3)
+
                     m = get_model_for_instance(instance_id)
                     if not m:
                         await ws.close()
                     instance = m.instances[instance_id].to_json()
 
                     await ws.send_json(({"state": instance["state"]}))
+                    await asyncio.sleep(3)
 
         elif msg.type == aiohttp.WSMsgType.ERROR:
             print('ws connection closed with exception %s' %
@@ -229,9 +234,16 @@ async def handle_instance_state(request):
 app = None
 
 
+@web.middleware
+async def cors_middleware(request, handler):
+    response = await handler(request)
+    response.headers['Access-Control-Allow-Origin'] = "*"
+    return response
+
+
 def run():
     global app
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     app.on_startup.append(run_as_server)
     app.add_routes(routes)
 
