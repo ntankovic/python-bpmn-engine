@@ -1,12 +1,14 @@
+import uuid
+
 import aiohttp
 import os
-from aiohttp import web
 from uuid import uuid4
 import asyncio
+from aiohttp import web, ClientSession, ClientTimeout
 
 from aiohttp.web_ws import WebSocketResponse
 
-from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, ReceiveMessage, BpmnInstance
+from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, ReceiveMessage
 import aiohttp_cors
 import db_connector
 from functools import reduce
@@ -86,7 +88,8 @@ async def handle_new_instance(request):
 
 @routes.get("/model/{model_name}/instance")
 async def handle_new_instance(request):
-    _id = str(uuid4())
+    _id = str(uuid4()) + str(uuid.uuid1())
+
     model = request.match_info.get("model_name")
     instance = await app["bpmn_models"][model].create_instance(_id, {})
     asyncio.create_task(instance.run())
@@ -171,7 +174,7 @@ async def handle_task_info(request):
     m: BpmnModel = get_model_for_instance(instance_id)
     if not m:
         raise aiohttp.web.HTTPNotFound
-    instance: BpmnInstance = m.instances[instance_id]
+    instance = m.instances[instance_id]
     task = instance.model.elements[task_id]
 
     return web.json_response(task.get_info())
@@ -234,7 +237,7 @@ async def handle_instance_state(request):
 app = None
 
 
-def run():
+async def run():
     global app
     app = web.Application()
     app.on_startup.append(run_as_server)
@@ -264,4 +267,5 @@ async def serve():
 
 if __name__ == "__main__":
     app = run()
+
     web.run_app(app, port=os.environ.get('PORT', 9000))

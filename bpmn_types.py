@@ -1,3 +1,4 @@
+import asyncio
 from copy import deepcopy
 from uuid import uuid4
 from xml import etree
@@ -5,15 +6,13 @@ from xml import etree
 import aiohttp
 import requests
 import os
-from aiohttp.client import ClientSession, ClientTimeout, ContentTypeError
+
 import xml.etree.ElementTree as ET
+
+from aiohttp import ContentTypeError, ClientSession, ClientTimeout
 
 import env
 from bpmn_model import *
-
-
-timeout = ClientTimeout(sock_connect=5)
-client_session = ClientSession(timeout=timeout)
 
 from utils.common import parse_expression, nested_dict_get, nested_dict_set
 
@@ -23,6 +22,8 @@ NS = {
 }
 
 BPMN_MAPPINGS = {}
+
+timeout = ClientTimeout(sock_connect=5)
 
 
 def bpmn_tag(tag):
@@ -252,44 +253,52 @@ class ServiceTask(Task):
         )
 
         # Check method and make request
+        async with aiohttp.ClientSession(timeout=timeout) as client_session:
+            if method := self.connector_fields["input_variables"].get("method") or "GET":
+                if method == "POST":
+                    call_function = client_session.post
+                elif method == "PATCH":
+                    call_function = client_session.patch
+                else:
+                    call_function = client_session.get
+                if not isinstance(data, dict):
+                    data = dict(data)
+                response = await call_function(
+                    url,
+                    params=parameters,
+                    json=data,
+                    headers={'content-type': 'application/json'}
+                )
+                if response.status not in (200, 201):
+                    raise Exception(response.text)
 
-        if method := self.connector_fields["input_variables"].get("method") or "GET":
+            r = {}
+            try:
+                r = await response.json()
+            except Exception as e:
+                print("error")
+                if not isinstance(e, ContentTypeError):
+                    raise e
 
-            if method == "POST":
-                call_function = client_session.post
-            elif method == "PATCH":
-                call_function = client_session.patch
-            else:
-                call_function = client_session.get
-            if not isinstance(data,dict):
-                data = dict(data)
-            response = await call_function(
-                url,
-                params=parameters,
-                json=data,
-                headers={'content-type': 'application/json'}
-            )
-            if response.status not in (200, 201):
-                raise Exception(response.text)
+                # Check for output variables
 
-        r = {}
-        try:
-            r = await response.json()
-        except Exception as e:
-            print("error")
-            if not isinstance(e, ContentTypeError):
-                raise e
+            if self.output_variables:
+                for key in self.output_variables:
+                    value = self.output_variables.get(key)
+                    if len(value) > 0:
+                        variables[key] = parse_expression(expression=value, process_variables=r)
+                    if key in r:
+                        variables[key] = r[key]
+            print(variables)
+        return r
 
-            # Check for output variables
 
-        if self.output_variables:
-            for key in self.output_variables:
-                value = self.output_variables.get(key)
-                if len(value) > 0:
-                    variables[key] = parse_expression(expression=value, process_variables=r)
-                if key in r:
-                    variables[key] = r[key]
-        print(variables)
+
+
+
+
+
+
 
     async def run(self, variables, instance_id):
 
