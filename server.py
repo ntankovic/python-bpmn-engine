@@ -234,16 +234,9 @@ async def handle_instance_state(request):
 app = None
 
 
-@web.middleware
-async def cors_middleware(request, handler):
-    response = await handler(request)
-    response.headers['Access-Control-Allow-Origin'] = "*"
-    return response
-
-
 def run():
     global app
-    app = web.Application(middlewares=[cors_middleware])
+    app = web.Application()
     app.on_startup.append(run_as_server)
     app.add_routes(routes)
 
