@@ -60,7 +60,8 @@ async def run_as_server(app):
 @routes.get("/test")
 async def test_call(request):
     print("Called test")
-    return web.json_response({"status": "ok"})
+    import sys
+    return web.json_response({"status": "ok","size":sys.getsizeof(models)})
 
 
 @routes.get("/model")
