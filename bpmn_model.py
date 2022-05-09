@@ -160,7 +160,8 @@ class BpmnInstance:
         if condition:
             key = condition.partition(":")[0]
             value = condition.partition(":")[2]
-            if key in state and state[key] == value:
+
+            if key in state and str(state[key]).upper() == str(value).upper():
                 ok = True
         log("\t  DONE: Result is", ok)
         return ok
