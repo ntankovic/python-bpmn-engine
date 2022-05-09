@@ -118,13 +118,14 @@ async def handle_receive_task(request):
     return web.json_response({"status": "OK"})
 
 
-@routes.post("/instance/{model}/task/{task_id}/receive")
-async def handle_receive_task(request):
+@routes.post("/model/{model}/task/{task_id}/receive")
+async def handle_auto_receive(request):
     _id = str(uuid4()) + str(uuid.uuid1())
 
     model = request.match_info.get("model")
     instance = await app["bpmn_models"][model].create_instance(_id, {})
-    await instance.run()
+    asyncio.create_task(instance.run())
+
     data = await request.json()
     task_id = request.match_info.get("task_id")
     m = get_model_for_instance(_id)
