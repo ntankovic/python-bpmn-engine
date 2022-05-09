@@ -126,7 +126,7 @@ async def handle_auto_receive(request):
     model = request.match_info.get("model")
     instance = await app["bpmn_models"][model].create_instance(_id, {})
     asyncio.create_task(instance.run())
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.0000000000000000001)
     data = await request.json()
     instance_id = instance._id
     task_id = request.match_info.get("task_id")
