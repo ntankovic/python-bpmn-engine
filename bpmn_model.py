@@ -96,8 +96,10 @@ class BpmnModel:
             "instances": [i._id for i in self.instances.values()],
         }
 
-    async def create_instance(self, _id, variables, process=None):
+    async def create_instance(self, _id, variables, process=None,initial=None):
         queue = asyncio.Queue()
+        if initial:
+            queue.put_nowait(initial)
         if not process:
             if self.main_collaboration_process:
                 # If Collaboration diagram

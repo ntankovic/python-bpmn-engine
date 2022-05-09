@@ -1,4 +1,5 @@
 import uuid
+from asyncio import sleep
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 import aiohttp
@@ -125,12 +126,13 @@ async def handle_auto_receive(request):
     model = request.match_info.get("model")
     instance = await app["bpmn_models"][model].create_instance(_id, {})
     asyncio.create_task(instance.run())
-
+    await asyncio.sleep(1)
     data = await request.json()
+    instance_id = instance._id
     task_id = request.match_info.get("task_id")
-    m = get_model_for_instance(_id)
-    m.instances[_id].in_queue.put_nowait(ReceiveMessage(task_id, data))
-    return web.json_response({"status": "OK", "id": _id})
+    m = get_model_for_instance(instance_id)
+    m.instances[instance_id].in_queue.put_nowait(ReceiveMessage(task_id, data))
+    return web.json_response({"status": "OK", "id_instance": _id})
 
 
 @routes.get("/instance")
