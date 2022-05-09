@@ -1,4 +1,5 @@
 import uuid
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 import aiohttp
 import os
@@ -61,7 +62,7 @@ async def run_as_server(app):
 async def test_call(request):
     print("Called test")
     import sys
-    return web.json_response({"status": "ok","size":sys.getsizeof(models)})
+    return web.json_response({"status": "ok", "size": sys.getsizeof(models)})
 
 
 @routes.get("/model")
@@ -115,6 +116,20 @@ async def handle_receive_task(request):
     m = get_model_for_instance(instance_id)
     m.instances[instance_id].in_queue.put_nowait(ReceiveMessage(task_id, data))
     return web.json_response({"status": "OK"})
+
+
+@routes.post("/instance/{model}/task/{task_id}/receive")
+async def handle_receive_task(request):
+    _id = str(uuid4()) + str(uuid.uuid1())
+
+    model = request.match_info.get("model")
+    instance = await app["bpmn_models"][model].create_instance(_id, {})
+    await instance.run()
+    data = await request.json()
+    task_id = request.match_info.get("task_id")
+    m = get_model_for_instance(_id)
+    m.instances[_id].in_queue.put_nowait(ReceiveMessage(task_id, data))
+    return web.json_response({"status": "OK", "id": _id})
 
 
 @routes.get("/instance")
@@ -268,5 +283,4 @@ async def serve():
 
 if __name__ == "__main__":
     app = run()
-
     web.run_app(app, port=os.environ.get('PORT', 9000))

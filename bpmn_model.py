@@ -1,3 +1,5 @@
+from asyncio import get_running_loop
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 import xml.etree.ElementTree as ET
 from bpmn_types import *
@@ -14,6 +16,8 @@ import env
 from bpmn_types import Task, ServiceTask
 
 instance_models = {}
+
+thread_pool = ThreadPoolExecutor(max_workers=100)
 
 
 def get_model_for_instance(iid):
@@ -170,9 +174,11 @@ class BpmnInstance:
         return self
 
     # async def run(self, is_subprocess=False):
-    #     import _thread
-    #     _thread.start_new_thread(asyncio.run, args=(self._run(is_subprocess=is_subprocess),))
-    #     print("thread")
+    #     def task():
+    #         await self._run(is_subprocess=is_subprocess)
+    #
+    #     vars = (get_running_loop().run_in_executor(thread_pool, lambda: task(), ))
+    #     return vars
 
     async def run(self, is_subprocess=False):
 
