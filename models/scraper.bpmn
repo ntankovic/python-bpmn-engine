@@ -60,7 +60,7 @@
       <bpmn:outgoing>Flow_1kn5m6k</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:sequenceFlow id="Flow_1xl9jk8" sourceRef="student_prihvacen" targetRef="Activity_1x9m64g">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">bulk:false</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">bulk:False</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:exclusiveGateway id="student_prihvacen" name="Bulk?">
       <bpmn:incoming>Flow_1kn5m6k</bpmn:incoming>
@@ -68,7 +68,7 @@
       <bpmn:outgoing>Flow_0e8t4n5</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:sequenceFlow id="Flow_0e8t4n5" sourceRef="student_prihvacen" targetRef="Activity_04ixthz">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">bulk:true</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">bulk:True</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:serviceTask id="Activity_1x9m64g" name="Keyword scoring service">
       <bpmn:extensionElements>
