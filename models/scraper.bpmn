@@ -59,8 +59,10 @@
       <bpmn:incoming>Flow_1y6vtsb</bpmn:incoming>
       <bpmn:outgoing>Flow_1kn5m6k</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:sequenceFlow id="Flow_1xl9jk8" sourceRef="by" targetRef="Activity_1x9m64g" />
-    <bpmn:exclusiveGateway id="by" name="Bulk?" default="Flow_1xl9jk8">
+    <bpmn:sequenceFlow id="Flow_1xl9jk8" sourceRef="by" targetRef="Activity_1x9m64g">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">bulk:false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:exclusiveGateway id="by" name="Bulk?">
       <bpmn:incoming>Flow_1kn5m6k</bpmn:incoming>
       <bpmn:outgoing>Flow_1xl9jk8</bpmn:outgoing>
       <bpmn:outgoing>Flow_0e8t4n5</bpmn:outgoing>

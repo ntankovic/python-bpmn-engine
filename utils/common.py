@@ -13,7 +13,7 @@ def parse_expression(expression, process_variables):
         return process_variables[key]
     if "." in key:
         value = nested_dict_get(process_variables, key)
-        if value:
+        if value is not None:
             return value
 
     return expression.replace("${", "{").format_map(SafeDict(process_variables))
