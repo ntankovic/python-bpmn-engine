@@ -338,9 +338,10 @@ class BpmnInstance:
                             continue
 
                         if sequence.condition:
-                            if self.check_condition(
-                                    self.variables, sequence.condition, log
-                            ):
+                            cond = self.check_condition(
+                                self.variables, sequence.condition, log
+                            )
+                            if cond:
                                 next_tasks.append(elements[sequence.target])
                         else:
                             next_tasks.append(elements[sequence.target])
