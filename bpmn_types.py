@@ -285,20 +285,16 @@ class ServiceTask(Task):
             if self.output_variables:
                 for key in self.output_variables:
                     value = self.output_variables.get(key)
-                    if len(value) > 0:
-                        variables[key] = parse_expression(expression=value, process_variables=r)
+                    try:
+                        if len(value) > 0:
+                            variables[key] = parse_expression(expression=value, process_variables=r)
+                    except Exception:
+                        print("error")
                     if key in r:
                         variables[key] = r[key]
+
             print(variables)
         return r
-
-
-
-
-
-
-
-
 
     async def run(self, variables, instance_id):
 
