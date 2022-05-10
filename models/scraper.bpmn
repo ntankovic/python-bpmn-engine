@@ -19,7 +19,7 @@
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_0015fxf" sourceRef="Activity_04ixthz" targetRef="Event_0cpy6n0" />
     <bpmn:sequenceFlow id="Flow_1fomewo" sourceRef="Event_1j9mesd" targetRef="call_scrape" />
-    <bpmn:sequenceFlow id="Flow_1kn5m6k" sourceRef="Activity_07qmmbx" targetRef="bulk" />
+    <bpmn:sequenceFlow id="Flow_1kn5m6k" sourceRef="Activity_07qmmbx" targetRef="by" />
     <bpmn:sequenceFlow id="Flow_1ji1ax5" sourceRef="call_scrape" targetRef="Activity_0dlpt0b" />
     <bpmn:sequenceFlow id="Flow_1y6vtsb" sourceRef="Activity_0dlpt0b" targetRef="Activity_07qmmbx" />
     <bpmn:sequenceFlow id="Flow_02lt03j" sourceRef="Activity_1x9m64g" targetRef="Activity_04ixthz" />
@@ -59,15 +59,15 @@
       <bpmn:incoming>Flow_1y6vtsb</bpmn:incoming>
       <bpmn:outgoing>Flow_1kn5m6k</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:sequenceFlow id="Flow_1xl9jk8" sourceRef="bulk" targetRef="Activity_1x9m64g">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">bulk:false</bpmn:conditionExpression>
-    </bpmn:sequenceFlow>
-    <bpmn:exclusiveGateway id="bulk" name="Bulk?" default="Flow_0e8t4n5">
+    <bpmn:sequenceFlow id="Flow_1xl9jk8" sourceRef="by" targetRef="Activity_1x9m64g" />
+    <bpmn:exclusiveGateway id="by" name="Bulk?" default="Flow_1xl9jk8">
       <bpmn:incoming>Flow_1kn5m6k</bpmn:incoming>
       <bpmn:outgoing>Flow_1xl9jk8</bpmn:outgoing>
       <bpmn:outgoing>Flow_0e8t4n5</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:sequenceFlow id="Flow_0e8t4n5" sourceRef="bulk" targetRef="Activity_04ixthz" />
+    <bpmn:sequenceFlow id="Flow_0e8t4n5" sourceRef="by" targetRef="Activity_04ixthz">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">bulk:true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
     <bpmn:serviceTask id="Activity_1x9m64g" name="Keyword scoring service">
       <bpmn:extensionElements>
         <camunda:inputOutput>
@@ -165,7 +165,7 @@
         <dc:Bounds x="540" y="219" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_0lnh0cq_di" bpmnElement="bulk" isMarkerVisible="true" bioc:stroke="#000" bioc:fill="#fff">
+      <bpmndi:BPMNShape id="Gateway_0lnh0cq_di" bpmnElement="by" isMarkerVisible="true" bioc:stroke="#000" bioc:fill="#fff">
         <dc:Bounds x="665" y="234" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="725" y="252" width="28" height="14" />
