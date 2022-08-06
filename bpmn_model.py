@@ -107,10 +107,14 @@ class BpmnModel:
             else:
                 # If Process diagram
                 process = list(self.process_elements)[0]
+        instance = await self.instance_obj(_id, process, queue, variables)
+        self.instances[_id] = instance
+        return instance
+
+    async def instance_obj(self, _id, process, queue, variables):
         instance = BpmnInstance(
             _id, model=self, variables=variables, in_queue=queue, process=process
         )
-        self.instances[_id] = instance
         return instance
 
     # Takes model_path needed for deployed subprocess
@@ -300,7 +304,7 @@ class BpmnInstance:
 
                     log("DOING:", current)
                     can_continue = await current.run_subprocess(self.model, current.called_element, self.variables)
-                    log("SUBPROCESS DONE WITH VARIABLES\n" + "---> " + str(self.variables))
+                    # log("SUBPROCESS DONE WITH VARIABLES\n" + "---> " + str(self.variables))
                     # Helper variables for DB insert
                     new_variables = {
                         k: self.variables[k]
@@ -375,7 +379,7 @@ class BpmnInstance:
                     activity_variables=current_and_variables_dict[c],
                 )
         if not is_subprocess:
-            log("WORKFLOW DONE WITH VARIABLES\n" + "---> " + str(self.variables))
+            log("WORKFLOW DONE WITH VARIABLES\n" + "---> " )
 
         self.state = "finished"
         self.pending = []

@@ -293,7 +293,7 @@ class ServiceTask(Task):
                     if key in r:
                         variables[key] = r[key]
 
-            print(variables)
+            # print(variables)
         return r
 
     async def run(self, variables, instance_id):

@@ -1,3 +1,4 @@
+import time
 import uuid
 from asyncio import sleep
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
@@ -23,7 +24,7 @@ routes = web.RouteTableDef()
 
 models = {}
 
-ignored_files = ["fipu_ticketing.bpmn"]
+ignored_files = ["scraper2.bpmn", "fipu_ticketing.bpmn"]
 
 
 def create_models():
@@ -43,11 +44,14 @@ def create_models():
 async def run_as_server(app):
     app["bpmn_models"] = create_models()
     # db_connector.DB.drop_all_tables(with_all_data=True)
+    start_time = time.time()
     logs = db_connector.get_instances_log()
     print("Running: " + str(len(logs)))
     completed = db_connector.get_instances_log(running=False)
     print("Completed: " + str(len(completed)))
+    print("--- %s seconds ---" % (time.time() - start_time))
 
+    # return
     for l in logs:
         for key, data in l.items():
             if data["model_path"] in app["bpmn_models"]:
