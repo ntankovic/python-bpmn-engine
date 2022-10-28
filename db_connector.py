@@ -1,5 +1,10 @@
+from typing import Union, Any
+
 from pony.orm import *
 from datetime import datetime
+
+from pony.orm.core import EntityMeta
+
 import env
 import os
 
@@ -16,7 +21,7 @@ class Event(DB.Entity):
 
 
 class RunningInstance(DB.Entity):
-    running = Required(bool)
+    state = Required(str)
     ran_as_subprocess = Required(bool)
     instance_id = Required(str, unique=True)
     # maybe need this
@@ -31,8 +36,6 @@ def setup_db():
     else:
         DB.bind(provider="sqlite", filename="database/database2.sqlite", create_db=True)
     DB.generate_mapping(create_tables=True)
-
-
 
 
 @db_session
@@ -50,8 +53,12 @@ def add_event(
 
 
 @db_session
-def add_running_instance(instance_id, ran_as_subprocess=False):
-    RunningInstance(instance_id=instance_id, running=True, ran_as_subprocess=ran_as_subprocess)
+def add_running_instance(instance_id, ran_as_subprocess=False, state="initialized"):
+    RunningInstance(instance_id=instance_id ,state=state, ran_as_subprocess=ran_as_subprocess)
+
+@db_session
+def change_instance_state(instance_id, state="initialized"):
+    RunningInstance[instance_id].state=state
 
 
 @db_session
@@ -61,12 +68,17 @@ def finish_running_instance(instance):
 
 
 @db_session
-def get_instances_log(running=True):
+def get_instances_log(state="running"):
     log = []
-    running_instances = RunningInstance.select(lambda ri: ri.running == running)[:]
+    state_query = lambda ri: ri.state == state
+    if state is None:
+        state_query = None
+    running_instances = RunningInstance.select(state_query)[:]
     for instance in running_instances:
         instance_dict = {}
         instance_dict[instance.instance_id] = {}
+        instance_dict[instance.instance_id]["subprocess"] = instance.ran_as_subprocess
+        instance_dict[instance.instance_id]["state"] = instance.state
         events = Event.select(lambda e: e.instance_id == instance.instance_id).order_by(
             Event.timestamp
         )[:]
@@ -84,3 +96,27 @@ def get_instances_log(running=True):
         log.append(instance_dict)
 
     return log
+
+
+@db_session
+def get_instance(id):
+    instance_dict = {}
+
+    db_instance: RunningInstance = RunningInstance.get(instance_id=id)
+    instance_dict["subprocess"]=db_instance.ran_as_subprocess
+    instance_dict["instance.state"]=db_instance.state
+    events = Event.select(lambda e: e.instance_id == id).order_by(
+        Event.timestamp
+    )[:]
+    events_list = []
+    for event in events:
+        model_path = event.model_name
+        event_dict = {}
+        event_dict["activity_id"] = event.activity_id
+        event_dict["pending"] = event.pending
+        event_dict["activity_variables"] = event.activity_variables
+        events_list.append(event_dict)
+    instance_dict["model_path"] = model_path
+    instance_dict["events"] = events_list
+    instance_dict["running"] = db_instance.running
+    return instance_dict

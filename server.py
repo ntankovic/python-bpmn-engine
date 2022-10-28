@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 from asyncio import sleep
@@ -11,7 +12,7 @@ from aiohttp import web, ClientSession, ClientTimeout
 
 from aiohttp.web_ws import WebSocketResponse
 
-from bpmn_model import BpmnModel, UserFormMessage, get_model_for_instance, ReceiveMessage
+from bpmn_model import BpmnModel, UserFormMessage, ReceiveMessage
 import aiohttp_cors
 import db_connector
 from functools import reduce
@@ -41,13 +42,26 @@ def create_models():
     return models
 
 
+async def get_model_for_instance(iid):
+    instance_dict = db_connector.get_instance(id=iid)
+
+    # creates a new empty instance or gets an existing one
+    instance = await models[instance_dict["model_path"]].create_or_get_instance(
+        iid, {}
+    )
+
+    instance = await instance.run_from_log(instance_dict["events"],instance_dict["state"])
+
+    return instance
+
+
 async def run_as_server(app):
     app["bpmn_models"] = create_models()
     # db_connector.DB.drop_all_tables(with_all_data=True)
     start_time = time.time()
-    logs = db_connector.get_instances_log()
+    logs = db_connector.get_instances_log(state="running")
     print("Running: " + str(len(logs)))
-    completed = db_connector.get_instances_log(running=False)
+    completed = db_connector.get_instances_log(state=None)
     print("Completed: " + str(len(completed)))
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -58,7 +72,7 @@ async def run_as_server(app):
                 instance = await app["bpmn_models"][data["model_path"]].create_instance(
                     key, {}
                 )
-                instance = await instance.run_from_log(data["events"])
+                instance = await instance.run_from_log(data["events"],data["state"])
                 asyncio.create_task(instance.run())
 
 
@@ -108,7 +122,7 @@ async def handle_form(request):
     post = await request.json()
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
-    m = get_model_for_instance(instance_id)
+    m = await get_model_for_instance(instance_id)
     m.instances[instance_id].in_queue.put_nowait(UserFormMessage(task_id, post))
     return web.json_response({"status": "OK"})
 
@@ -118,7 +132,7 @@ async def handle_receive_task(request):
     data = await request.json()
     instance_id = request.match_info.get("instance_id")
     task_id = request.match_info.get("task_id")
-    m = get_model_for_instance(instance_id)
+    m = await get_model_for_instance(instance_id)
     m.instances[instance_id].in_queue.put_nowait(ReceiveMessage(task_id, data))
     return web.json_response({"status": "OK"})
 
@@ -134,7 +148,7 @@ async def handle_auto_receive(request):
     data = await request.json()
     instance_id = instance._id
     task_id = request.match_info.get("task_id")
-    m = get_model_for_instance(instance_id)
+    m = await get_model_for_instance(instance_id)
     m.instances[instance_id].in_queue.put_nowait(ReceiveMessage(task_id, data))
     return web.json_response({"status": "OK", "id_instance": _id})
 
@@ -185,7 +199,7 @@ async def search_instance(request):
 
     data = []
     for _id in ids:
-        data.append(get_model_for_instance(_id).instances[_id].to_json())
+        data.append((await get_model_for_instance(_id)).instances[_id].to_json())
 
     return web.json_response({"status": "ok", "results": data})
 
@@ -206,7 +220,7 @@ async def handle_task_info(request):
 @routes.get("/instance/{instance_id}")
 async def handle_instance_info(request):
     instance_id = request.match_info.get("instance_id")
-    m = get_model_for_instance(instance_id)
+    m = await get_model_for_instance(instance_id)
     if not m:
         raise aiohttp.web.HTTPNotFound
     instance = m.instances[instance_id].to_json()
@@ -229,7 +243,7 @@ async def handle_instance_state_ws(request):
 
                 while state != "finished" and not ws.closed:
 
-                    m = get_model_for_instance(instance_id)
+                    m = await get_model_for_instance(instance_id)
                     if not m:
                         await ws.close()
                     instance = m.instances[instance_id].to_json()
@@ -249,7 +263,7 @@ async def handle_instance_state_ws(request):
 @routes.get("/instance/{instance_id}/state")
 async def handle_instance_state(request):
     instance_id = request.match_info.get("instance_id")
-    m = get_model_for_instance(instance_id)
+    m = await get_model_for_instance(instance_id)
     if not m:
         raise aiohttp.web.HTTPNotFound
     instance = m.instances[instance_id].to_json()
