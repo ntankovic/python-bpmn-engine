@@ -4,7 +4,7 @@ import random
 import sys
 
 
-m = BpmnModel("models/model_01.bpmn")
+m = BpmnModel("models/private/model_01.bpmn")
 NUM_INSTANCES = 2
 
 

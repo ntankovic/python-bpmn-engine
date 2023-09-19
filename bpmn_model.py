@@ -1,3 +1,5 @@
+from asyncio import get_running_loop
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 import xml.etree.ElementTree as ET
 from bpmn_types import *
@@ -11,18 +13,22 @@ from datetime import datetime
 import os
 from uuid import uuid4
 import env
+from bpmn_types import Task, ServiceTask
 
-instance_models = {}
 
-
-def get_model_for_instance(iid):
-    return instance_models.get(iid, None)
+# thread_pool = ThreadPoolExecutor(max_workers=100)
 
 
 class UserFormMessage:
     def __init__(self, task_id, form_data={}):
         self.task_id = task_id
         self.form_data = form_data
+
+
+class ReceiveMessage:
+    def __init__(self, task_id, data={}):
+        self.task_id = task_id
+        self.data = data or {}
 
 
 class BpmnModel:
@@ -77,17 +83,24 @@ class BpmnModel:
                 break
 
     def to_json(self):
+        tasks = [x.to_json() for x in self.elements.values() if isinstance(x, UserTask) or isinstance(x, ReceiveTask)]
         return {
             "model_path": self.model_path,
             "main_process": self.main_process.__dict__,
-            "tasks": [
-                x.to_json() for x in self.elements.values() if isinstance(x, UserTask)
-            ],
+            "tasks": tasks,
             "instances": [i._id for i in self.instances.values()],
         }
 
-    async def create_instance(self, _id, variables, process=None):
+    async def create_or_get_instance(self, _id, variables, process=None, initial=None):
+        if _id in self.instances:
+            return self.instances[_id]
+        instance = await self.create_instance(_id, variables, process=None, initial=None)
+        return instance
+
+    async def create_instance(self, _id, variables, process=None, initial=None):
         queue = asyncio.Queue()
+        if initial:
+            queue.put_nowait(initial)
         if not process:
             if self.main_collaboration_process:
                 # If Collaboration diagram
@@ -95,10 +108,14 @@ class BpmnModel:
             else:
                 # If Process diagram
                 process = list(self.process_elements)[0]
+        instance = await self.instance_obj(_id, process, queue, variables)
+        self.instances[_id] = instance
+        return instance
+
+    async def instance_obj(self, _id, process, queue, variables):
         instance = BpmnInstance(
             _id, model=self, variables=variables, in_queue=queue, process=process
         )
-        self.instances[_id] = instance
         return instance
 
     # Takes model_path needed for deployed subprocess
@@ -122,7 +139,7 @@ class BpmnModel:
 
 class BpmnInstance:
     def __init__(self, _id, model, variables, in_queue, process):
-        instance_models[_id] = model
+        # instance_models[_id] = model
         self._id = _id
         self.model = model
         self.variables = deepcopy(variables)
@@ -130,6 +147,7 @@ class BpmnInstance:
         self.state = "initialized"
         self.pending = deepcopy(self.model.process_pending[process])
         self.process = process
+
 
     def to_json(self):
         return {
@@ -148,12 +166,18 @@ class BpmnInstance:
         if condition:
             key = condition.partition(":")[0]
             value = condition.partition(":")[2]
-            if key in state and state[key] == value:
+
+            if key in state and str(state[key]).upper() == str(value).upper():
                 ok = True
         log("\t  DONE: Result is", ok)
         return ok
 
-    async def run_from_log(self, log):
+    async def run_from_log(self, log,state):
+        if self.state == "running" or self.state == "finished":
+            return self
+        if state == "running" or state == "finished":
+            return self
+
         for l in log:
             if l.get("activity_id") in self.model.elements:
                 pending_elements_list = []
@@ -163,26 +187,19 @@ class BpmnInstance:
                 self.variables = {**l.get("activity_variables"), **self.variables}
         return self
 
-    async def run_subprocess(self, process_id):
-        new_subproces_instance_id = str(uuid4())
-        if not self.model.subprocesses[process_id]:
-            new_subprocess_instance = await self.model.create_instance(
-                new_subproces_instance_id, {}, process_id
-            )
-            finished_subprocess = await new_subprocess_instance.run()
-        else:
-            subprocess_model = BpmnModel(self.model.subprocesses[process_id])
-            new_subproces_instance = await subprocess_model.create_instance(
-                new_subproces_instance_id, {}, process_id
-            )
-            finished_subprocess = await new_subproces_instance.run()
-        return True
+    # async def run(self, is_subprocess=False):
+    #     def task():
+    #         await self._run(is_subprocess=is_subprocess)
+    #
+    #     vars = (get_running_loop().run_in_executor(thread_pool, lambda: task(), ))
+    #     return vars
 
-    async def run(self):
+    async def run(self, is_subprocess=False):
 
         self.state = "running"
         _id = self._id
         prefix = f"\t[{_id}]"
+
         log = partial(print, prefix)  # if _id == "2" else lambda *x: x
 
         in_queue = self.in_queue
@@ -220,7 +237,7 @@ class BpmnInstance:
                     }
                     current_and_variables_dict[current._id] = new_variables
                     # Create new running instance
-                    db_connector.add_running_instance(instance_id=self._id)
+                    db_connector.add_running_instance(instance_id=self._id, state=self.state, ran_as_subprocess=is_subprocess)
 
                 if isinstance(current, EndEvent):
                     exit = True
@@ -232,15 +249,15 @@ class BpmnInstance:
                         activity_id=current._id,
                         timestamp=datetime.now(),
                         pending=[],
-                        activity_variables={},
+                        activity_variables=self.variables,
                     )
                     break
 
                 if isinstance(current, UserTask):
                     if (
-                        message
-                        and isinstance(message, UserFormMessage)
-                        and message.task_id == current._id
+                            message
+                            and isinstance(message, UserFormMessage)
+                            and message.task_id == current._id
                     ):
                         user_action = message.form_data
 
@@ -257,6 +274,7 @@ class BpmnInstance:
 
                 elif isinstance(current, ServiceTask):
                     log("DOING:", current)
+
                     can_continue = await current.run(self.variables, _id)
                     # Helper variables for DB insert
                     new_variables = {
@@ -274,11 +292,26 @@ class BpmnInstance:
                         for k in set(self.variables) - set(before_variables)
                     }
                     current_and_variables_dict[current._id] = new_variables
+                elif isinstance(current, ReceiveTask):
+                    if (
+                            message
+                            and isinstance(message, ReceiveMessage)
+                            and message.task_id == current._id
+                    ):
+                        log("DOING:", current)
+                        can_continue = current.run(self.variables, message.data)
+                        # Helper variables for DB insert
+                        new_variables = {
+                            k: self.variables[k]
+                            for k in set(self.variables) - set(before_variables)
+                        }
+                        current_and_variables_dict[current._id] = new_variables
 
                 elif isinstance(current, CallActivity):
-                    # TODO implement Variables tab CallActivity
+
                     log("DOING:", current)
-                    can_continue = await self.run_subprocess(current.called_element)
+                    can_continue = await current.run_subprocess(self.model, current.called_element, self.variables)
+                    # log("SUBPROCESS DONE WITH VARIABLES\n" + "---> " + str(self.variables))
                     # Helper variables for DB insert
                     new_variables = {
                         k: self.variables[k]
@@ -316,9 +349,10 @@ class BpmnInstance:
                             continue
 
                         if sequence.condition:
-                            if self.check_condition(
+                            cond = self.check_condition(
                                 self.variables, sequence.condition, log
-                            ):
+                            )
+                            if cond:
                                 next_tasks.append(elements[sequence.target])
                         else:
                             next_tasks.append(elements[sequence.target])
@@ -335,7 +369,9 @@ class BpmnInstance:
                     if isinstance(next_task, ParallelGateway):
                         next_task.add_token()
             else:
+
                 log("Waiting for user...", self.pending)
+
                 queue.append(await in_queue.get())
 
             # Insert finished events into DB
@@ -349,10 +385,13 @@ class BpmnInstance:
                     pending=[pending._id for pending in self.pending],
                     activity_variables=current_and_variables_dict[c],
                 )
+        if not is_subprocess:
+            log("WORKFLOW DONE WITH VARIABLES\n" + "---> ")
 
-        log("DONE")
         self.state = "finished"
+        db_connector.change_instance_state(self._id,state=self.state)
         self.pending = []
         # Running instance finished
         db_connector.finish_running_instance(self._id)
+
         return self.variables
