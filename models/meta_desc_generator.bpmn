@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_17xb9qa" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.0.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.15.0">
+  <bpmn:collaboration id="Collaboration_09wjuf3">
+    <bpmn:participant id="Participant_09xgzwq" name="metacheck_meta_desc_process" processRef="Process_1ubx312" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_1ubx312" name="metacheck_meta_desc_process" isExecutable="true">
+    <bpmn:startEvent id="start">
+      <bpmn:outgoing>Flow_1fomewo</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_0015fxf" sourceRef="save_to_db" targetRef="finish" />
+    <bpmn:sequenceFlow id="Flow_1fomewo" sourceRef="start" targetRef="call_generate" />
+    <bpmn:sequenceFlow id="Flow_1y6vtsb" sourceRef="start_gen" targetRef="generation" />
+    <bpmn:sequenceFlow id="Flow_0tp54c8" sourceRef="generation" targetRef="save_to_db" />
+    <bpmn:sequenceFlow id="Flow_0vs55ro" sourceRef="exists_or_running" targetRef="Gateway_0jx0yct" />
+    <bpmn:sequenceFlow id="Flow_1m468i0" sourceRef="Gateway_0jx0yct" targetRef="Activity_19zq4db" />
+    <bpmn:endEvent id="finish">
+      <bpmn:incoming>Flow_0015fxf</bpmn:incoming>
+      <bpmn:incoming>Flow_11e8ue1</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gateway_0jx0yct" name="Continue?">
+      <bpmn:incoming>Flow_0vs55ro</bpmn:incoming>
+      <bpmn:outgoing>Flow_1m468i0</bpmn:outgoing>
+      <bpmn:outgoing>Flow_11e8ue1</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="exists_or_running" name="Exists or is running">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="url">/checkGenerationExists</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>db_connector_python</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="user_id" />
+          <camunda:inputParameter name="result_id" />
+          <camunda:inputParameter name="session_id" />
+          <camunda:outputParameter name="exists" />
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1ji1ax5</bpmn:incoming>
+      <bpmn:outgoing>Flow_0vs55ro</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_11e8ue1" name="No" sourceRef="Gateway_0jx0yct" targetRef="finish">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">exists:true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0dqcaro" sourceRef="Activity_19zq4db" targetRef="start_gen" />
+    <bpmn:serviceTask id="Activity_19zq4db" name="Get result from db">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="url">/getResult</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>db_connector_python</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="result_id" />
+          <camunda:inputParameter name="session_id" />
+          <camunda:inputParameter name="user_id" />
+          <camunda:outputParameter name="text" />
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1m468i0</bpmn:incoming>
+      <bpmn:outgoing>Flow_0dqcaro</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="save_to_db" name="Save to db">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="url">/saveMetaDesc</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>db_connector_python</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="summarized" />
+          <camunda:inputParameter name="doc_id" />
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0tp54c8</bpmn:incoming>
+      <bpmn:outgoing>Flow_0015fxf</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="start_gen" name="Start generation, save to db">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="url">/startDescSession</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>db_connector_python</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="result_id" />
+          <camunda:inputParameter name="session_id" />
+          <camunda:inputParameter name="user_id" />
+          <camunda:outputParameter name="doc_id">${data.doc_id}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0dqcaro</bpmn:incoming>
+      <bpmn:outgoing>Flow_1y6vtsb</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="generation" name="Generation service">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="url">/generate</camunda:inputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>meta_desc_gen_service</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="text" />
+          <camunda:outputParameter name="summarized">${data.summarized}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1y6vtsb</bpmn:incoming>
+      <bpmn:outgoing>Flow_0tp54c8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:receiveTask id="call_generate" name="Requested">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="user_id" />
+          <camunda:inputParameter name="result_id" />
+          <camunda:inputParameter name="session_id" />
+          <camunda:outputParameter name="result_id" />
+          <camunda:outputParameter name="session_id" />
+          <camunda:outputParameter name="user_id" />
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1fomewo</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ji1ax5</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:sequenceFlow id="Flow_1ji1ax5" sourceRef="call_generate" targetRef="exists_or_running" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_09wjuf3">
+      <bpmndi:BPMNShape id="Participant_09xgzwq_di" bpmnElement="Participant_09xgzwq" isHorizontal="true">
+        <dc:Bounds x="129" y="80" width="1171" height="310" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1y6vtsb_di" bpmnElement="Flow_1y6vtsb">
+        <di:waypoint x="880" y="310" />
+        <di:waypoint x="930" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ji1ax5_di" bpmnElement="Flow_1ji1ax5">
+        <di:waypoint x="350" y="310" />
+        <di:waypoint x="410" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1fomewo_di" bpmnElement="Flow_1fomewo">
+        <di:waypoint x="190" y="277" />
+        <di:waypoint x="190" y="310" />
+        <di:waypoint x="250" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0015fxf_di" bpmnElement="Flow_0015fxf">
+        <di:waypoint x="1170" y="310" />
+        <di:waypoint x="1190" y="310" />
+        <di:waypoint x="1190" y="268" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0tp54c8_di" bpmnElement="Flow_0tp54c8">
+        <di:waypoint x="1030" y="310" />
+        <di:waypoint x="1070" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0vs55ro_di" bpmnElement="Flow_0vs55ro">
+        <di:waypoint x="510" y="310" />
+        <di:waypoint x="555" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1m468i0_di" bpmnElement="Flow_1m468i0">
+        <di:waypoint x="605" y="310" />
+        <di:waypoint x="630" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11e8ue1_di" bpmnElement="Flow_11e8ue1">
+        <di:waypoint x="580" y="285" />
+        <di:waypoint x="580" y="130" />
+        <di:waypoint x="1190" y="130" />
+        <di:waypoint x="1190" y="232" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="878" y="112" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0dqcaro_di" bpmnElement="Flow_0dqcaro">
+        <di:waypoint x="730" y="310" />
+        <di:waypoint x="780" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_1j9mesd_di" bpmnElement="start">
+        <dc:Bounds x="172" y="241" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0cpy6n0_di" bpmnElement="finish">
+        <dc:Bounds x="1172" y="232" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0jx0yct_di" bpmnElement="Gateway_0jx0yct" isMarkerVisible="true">
+        <dc:Bounds x="555" y="285" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="556" y="342" width="51" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_1qku0dp" bpmnElement="exists_or_running">
+        <dc:Bounds x="410" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0d36t3i_di" bpmnElement="call_generate">
+        <dc:Bounds x="250" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_044055g" bpmnElement="Activity_19zq4db">
+        <dc:Bounds x="630" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_04ixthz_di" bpmnElement="save_to_db">
+        <dc:Bounds x="1070" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_0uhxk7c" bpmnElement="start_gen">
+        <dc:Bounds x="780" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_04wr7i0" bpmnElement="generation">
+        <dc:Bounds x="930" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

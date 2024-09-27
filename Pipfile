@@ -6,8 +6,24 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-aiohttp = "==3.7.4.post0"
-asyncio = "*"
+pipenv = "2022.5.2"
+aiohttp = "3.7.4.post0"
+aiohttp-cors = "0.7.0"
+async-timeout = "3.0.1"
+asyncio = "3.4.3"
+attrs = "21.2.0"
+certifi = "2021.5.30"
+chardet = "4.0.0"
+charset-normalizer = "2.0.4"
+idna = "3.2"
+multidict = "5.1.0"
+pony = "0.7.14"
+requests = "2.26.0"
+typing-extensions = "3.10.0.0"
+urllib3 = "1.26.6"
+yarl = "1.6.3"
+psycopg2 = "2.9.1"
+gunicorn = "20.1.0"
 
 [requires]
-python_version = "3.9"
+python_version = "3.8.10"
