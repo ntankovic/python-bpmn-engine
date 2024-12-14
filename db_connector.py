@@ -20,14 +20,24 @@ class RunningInstance(DB.Entity):
     instance_id = Required(str, unique=True)
 
 
-def setup_db():
+def setup_db(provider=None, recreate=False):
+
+    if not provider:
+        provider == env.DB["provider"]
+
     if not os.path.isdir("database"):
         os.mkdir("database")
-    if env.DB["provider"] == "postgres":
+
+    if provider == "postgres":
         DB.bind(**env.DB)
     else:
         DB.bind(provider="sqlite", filename="database/database.sqlite", create_db=True)
-    DB.generate_mapping(create_tables=True)
+
+    DB.generate_mapping()
+
+    if recreate:
+        DB.drop_all_tables(with_all_data=True)
+        DB.create_tables()
 
 
 @db_session

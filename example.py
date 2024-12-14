@@ -1,11 +1,12 @@
 import asyncio
 from bpmn_model import BpmnModel, UserFormMessage
+from db_connector import setup_db
 import random
-import sys
 
 
-m = BpmnModel("models/model_01.bpmn")
-NUM_INSTANCES = 2
+m = BpmnModel("model_01.bpmn")
+NUM_INSTANCES = 1
+setup_db(provider="sqlite", recreate=True)
 
 
 async def get_workload():
